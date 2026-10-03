@@ -1,10 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useNavigate, useLocation, useParams, useSearchParams } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
+import { useToast } from '../ToastContext'
 import type { User } from '../../types/auth'
 import type {
   ExperienceItem,
   SkillCategory,
   UserPreferences,
 } from '../../types/workspace'
+import type { SettingsTabId } from './settings'
 import WorkspaceNavbar from './WorkspaceNavbar'
 import JobDescriptionPanel from './JobDescriptionPanel'
 import ResumeCanvas from './ResumeCanvas'
@@ -14,9 +18,11 @@ import SettingsModal from './SettingsModal'
 import Footer from '../Footer'
 
 interface TailoredResumeWorkspaceProps {
-  user: User
-  onLogout: () => void
+  user?: User
+  onLogout?: () => void
+  initialModal?: 'experience' | 'skills' | 'settings' | null
 }
+
 
 const DEFAULT_SAMPLE_JD = `About Stripe:
 Stripe builds economic infrastructure for the internet. Millions of companies from worldwide enterprises to seed-stage startups use Stripe’s software and APIs to accept payments, send payouts, and manage their business processes online.
@@ -178,37 +184,69 @@ const INITIAL_PREFERENCES: UserPreferences = {
 export default function TailoredResumeWorkspace({
   user,
   onLogout,
+  initialModal,
 }: TailoredResumeWorkspaceProps) {
+  const { user: authUser, logout: authLogout, updateUser } = useAuth()
+  const activeUser = user || authUser
+  const handleLogout = onLogout || authLogout
+
+  const toast = useToast()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { tab } = useParams<{ tab?: string }>()
+  const [searchParams] = useSearchParams()
+
   const [profileOverride, setProfileOverride] = useState<User | null>(null)
-  const currentUser = profileOverride || user
+  const currentUser = profileOverride || activeUser
 
   const [currentWorkspace, setCurrentWorkspace] = useState<string>(
     'Tailored Resume Generator'
   )
-  const [company, setCompany] = useState<string>('Stripe, Inc.')
-  const [roleTitle, setRoleTitle] = useState<string>('Staff Product Engineer')
+  const qCompany = searchParams.get('company')
+  const qRole = searchParams.get('role')
+
+  const [company, setCompany] = useState<string>(() => qCompany || 'Stripe, Inc.')
+  const [roleTitle, setRoleTitle] = useState<string>(() => qRole || 'Staff Product Engineer')
+  const [prevParams, setPrevParams] = useState({ company: qCompany, role: qRole })
+
+  if (prevParams.company !== qCompany || prevParams.role !== qRole) {
+    setPrevParams({ company: qCompany, role: qRole })
+    if (qCompany) setCompany(qCompany)
+    if (qRole) setRoleTitle(qRole)
+  }
+
   const [jobDescription, setJobDescription] = useState<string>(DEFAULT_SAMPLE_JD)
   const [markdownContent, setMarkdownContent] = useState<string>(DEFAULT_MARKDOWN)
   const [experiences, setExperiences] = useState<ExperienceItem[]>(INITIAL_EXPERIENCES)
   const [categories, setCategories] = useState<SkillCategory[]>(INITIAL_SKILLS)
   const [preferences, setPreferences] = useState<UserPreferences>(INITIAL_PREFERENCES)
 
-  // Modals state
-  const [activeModal, setActiveModal] = useState<
-    'experience' | 'skills' | 'settings' | null
-  >(null)
+  // Route-driven modal state
+  const modalFromPath: 'experience' | 'skills' | 'settings' | null =
+    location.pathname.startsWith('/settings')
+      ? 'settings'
+      : location.pathname.startsWith('/experience')
+      ? 'experience'
+      : location.pathname.startsWith('/skills')
+      ? 'skills'
+      : null
+
+  const [localModal, setLocalModal] = useState<'experience' | 'skills' | 'settings' | null>(
+    initialModal || null
+  )
+
+  const activeModal = modalFromPath || localModal
+
+  const handleCloseModal = useCallback(() => {
+    setLocalModal(null)
+    if (modalFromPath) {
+      navigate('/', { replace: true })
+    }
+  }, [modalFromPath, navigate])
 
   // Generation state
   const [isGenerating, setIsGenerating] = useState<boolean>(false)
   const [highlightFlash, setHighlightFlash] = useState<boolean>(false)
-
-  const displayName =
-    currentUser.name ||
-    (currentUser.email === 'demo@careertrack.app'
-      ? 'Alex Chen'
-      : currentUser.email.split('@')[0].replace(/[._]/g, ' '))
-
-
 
   // Handle Trigger Resume Generation
   const handleGenerate = () => {
@@ -228,17 +266,25 @@ export default function TailoredResumeWorkspace({
         handleGenerate()
       }
       if (e.key === 'Escape') {
-        setActiveModal(null)
+        handleCloseModal()
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
+  }, [handleCloseModal])
 
   const handleCopyMarkdown = () => {
     navigator.clipboard.writeText(markdownContent)
-    alert('Tailored resume markdown copied to clipboard!')
+    toast.info('Tailored resume markdown copied to clipboard!', 'Markdown Copied')
   }
+
+  if (!currentUser) return null
+
+  const displayName =
+    currentUser.name ||
+    (currentUser.email === 'demo@careertrack.app'
+      ? 'Alex Chen'
+      : currentUser.email.split('@')[0].replace(/[._]/g, ' '))
 
   return (
     <div className="workspace-root">
@@ -247,10 +293,10 @@ export default function TailoredResumeWorkspace({
         user={currentUser}
         currentWorkspace={currentWorkspace}
         onSelectWorkspace={(name) => setCurrentWorkspace(name)}
-        onOpenExperience={() => setActiveModal('experience')}
-        onOpenSkills={() => setActiveModal('skills')}
-        onOpenSettings={() => setActiveModal('settings')}
-        onLogout={onLogout}
+        onOpenExperience={() => navigate('/experience')}
+        onOpenSkills={() => navigate('/skills')}
+        onOpenSettings={() => navigate('/settings')}
+        onLogout={handleLogout}
       />
 
       {/* Main 2-Column Workspace */}
@@ -284,7 +330,7 @@ export default function TailoredResumeWorkspace({
       {/* Interactive Modals */}
       <ExperienceModal
         isOpen={activeModal === 'experience'}
-        onClose={() => setActiveModal(null)}
+        onClose={handleCloseModal}
         experiences={experiences}
         onAddExperience={(newItem) => setExperiences([newItem, ...experiences])}
         onRemoveExperience={(id) =>
@@ -294,7 +340,7 @@ export default function TailoredResumeWorkspace({
 
       <SkillsModal
         isOpen={activeModal === 'skills'}
-        onClose={() => setActiveModal(null)}
+        onClose={handleCloseModal}
         categories={categories}
         onAddSkill={(catId, skill) => {
           setCategories(
@@ -307,12 +353,16 @@ export default function TailoredResumeWorkspace({
 
       <SettingsModal
         isOpen={activeModal === 'settings'}
-        onClose={() => setActiveModal(null)}
+        onClose={handleCloseModal}
         preferences={preferences}
         onSavePreferences={(updated) => setPreferences(updated)}
         user={currentUser}
-        onProfileUpdated={(updated) => setProfileOverride(updated)}
-        onLogout={onLogout}
+        initialTab={tab as SettingsTabId | undefined}
+        onProfileUpdated={(updated) => {
+          setProfileOverride(updated)
+          updateUser(updated)
+        }}
+        onLogout={handleLogout}
       />
 
       <Footer />

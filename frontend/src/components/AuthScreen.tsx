@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import type { ApiError, TokenResponse, User } from '../types/auth'
+import { useAuth } from '../context/AuthContext'
 import AlertBanner from './AlertBanner'
 import AuthShowcase from './AuthShowcase'
 import Footer from './Footer'
@@ -10,10 +12,14 @@ import SocialAuth from './SocialAuth'
 import TrustBadges from './TrustBadges'
 
 interface AuthScreenProps {
-  onAuthSuccess: (user: User, token: string) => void
+  onAuthSuccess?: (user: User, token: string) => void
 }
 
 export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
+  const { login } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
+
   const [isRegisterMode, setIsRegisterMode] = useState<boolean>(false)
   const [email, setEmail] = useState<string>('')
   const [password, setPassword] = useState<string>('')
@@ -22,6 +28,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const [loading, setLoading] = useState<boolean>(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -91,7 +98,12 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
       if (userRes.ok) {
         const userData: User = await userRes.json()
-        onAuthSuccess(userData, tokenData.access_token)
+        login(tokenData.access_token, userData, rememberMe)
+        if (onAuthSuccess) {
+          onAuthSuccess(userData, tokenData.access_token)
+        }
+        const from = (location.state as { from?: { pathname?: string } })?.from?.pathname || '/'
+        navigate(from, { replace: true })
       } else {
         throw new Error('Failed to retrieve user profile')
       }

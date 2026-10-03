@@ -16,6 +16,7 @@ interface SettingsModalProps {
   preferences: UserPreferences
   onSavePreferences: (updated: UserPreferences) => void
   user: User
+  initialTab?: SettingsTabId
   onProfileUpdated?: (updatedUser: User) => void
   onLogout?: () => void
 }
@@ -26,10 +27,11 @@ export default function SettingsModal({
   preferences,
   onSavePreferences,
   user,
+  initialTab,
   onProfileUpdated,
   onLogout,
 }: SettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<SettingsTabId>('profile')
+  const [activeTab, setActiveTab] = useState<SettingsTabId>(initialTab || 'profile')
 
   if (!isOpen) return null
 

@@ -29,7 +29,7 @@ careerTrack makes job searching and logging accomplishments at work easier. It s
 | Frontend | React 19, TypeScript, Vite | `frontend/src/main.tsx`, `frontend/src/App.tsx` |
 | Infra | Docker (`python:3.12-slim`, non-root UID 10001), Compose | `Dockerfile`, `compose.yaml` |
 
-Approved dependencies: `fastapi`, `uvicorn[standard]`, `pydantic-settings`, `sqlalchemy[asyncio]`, `asyncpg`, `alembic`, `pyjwt`, `bcrypt`, `react`, `react-dom`. **Ask the user before adding any other runtime dependency.**
+Approved dependencies: `fastapi`, `uvicorn[standard]`, `pydantic-settings`, `sqlalchemy[asyncio]`, `asyncpg`, `alembic`, `pyjwt`, `bcrypt`, `react`, `react-dom`, `react-router-dom`. **Ask the user before adding any other runtime dependency.**
 
 ---
 

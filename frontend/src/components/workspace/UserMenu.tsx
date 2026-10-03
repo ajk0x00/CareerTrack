@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { User } from '../../types/auth'
 
 interface UserMenuProps {
@@ -12,8 +13,10 @@ export default function UserMenu({
   onOpenSettings,
   onLogout,
 }: UserMenuProps) {
+  const navigate = useNavigate()
   const [isOpen, setIsOpen] = useState<boolean>(false)
   const menuRef = useRef<HTMLDivElement>(null)
+
 
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
@@ -69,6 +72,7 @@ export default function UserMenu({
               className="user-dropdown-item"
               onClick={() => {
                 setIsOpen(false)
+                navigate('/settings')
                 onOpenSettings()
               }}
             >
@@ -82,7 +86,11 @@ export default function UserMenu({
             <button
               type="button"
               className="user-dropdown-item"
-              onClick={() => setIsOpen(false)}
+              onClick={() => {
+                setIsOpen(false)
+                navigate('/settings/preferences')
+                onOpenSettings()
+              }}
             >
               <span className="material-symbols-outlined item-icon">tune</span>
               <span className="item-title">Account Preferences</span>
@@ -91,10 +99,13 @@ export default function UserMenu({
             <button
               type="button"
               className="user-dropdown-item"
-              onClick={() => setIsOpen(false)}
+              onClick={() => {
+                setIsOpen(false)
+                navigate('/pipeline')
+              }}
             >
-              <span className="material-symbols-outlined item-icon">credit_card</span>
-              <span className="item-title">Billing &amp; Subscription</span>
+              <span className="material-symbols-outlined item-icon">business_center</span>
+              <span className="item-title">Job Pipeline</span>
             </button>
           </div>
 
@@ -106,6 +117,7 @@ export default function UserMenu({
             onClick={() => {
               setIsOpen(false)
               onLogout()
+              navigate('/login')
             }}
           >
             <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>logout</span>
