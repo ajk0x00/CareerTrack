@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react'
 import AuthScreen from './components/AuthScreen'
-import Dashboard from './components/Dashboard'
-import Footer from './components/Footer'
-import Navbar from './components/Navbar'
+import TailoredResumeWorkspace from './components/workspace/TailoredResumeWorkspace'
 import type { User } from './types/auth'
 
 export default function App() {
@@ -80,26 +78,6 @@ export default function App() {
     )
   }
 
-  // Authenticated State View
-  return (
-    <>
-      <Navbar
-        rightActions={
-          <button
-            type="button"
-            className="header-btn"
-            onClick={handleLogout}
-            style={{ color: 'var(--error)' }}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
-              logout
-            </span>
-            <span>Sign Out</span>
-          </button>
-        }
-      />
-      <Dashboard user={user} onLogout={handleLogout} />
-      <Footer />
-    </>
-  )
+  // Authenticated State View - Tailored Resume Workspace
+  return <TailoredResumeWorkspace user={user} onLogout={handleLogout} />
 }
