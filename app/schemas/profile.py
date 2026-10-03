@@ -158,11 +158,6 @@ class ProfileBase(BaseModel):
         return cleaned
 
 
-class ProfileCreate(ProfileBase):
-    """Schema for initializing/creating user profile."""
-    pass
-
-
 class ProfileUpdate(ProfileBase):
     """Schema for updating/patching user profile fields."""
     pass

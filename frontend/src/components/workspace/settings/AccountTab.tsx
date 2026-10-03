@@ -1,63 +1,15 @@
-import { useState } from 'react'
-import type { User, ApiError } from '../../../types/auth'
-import { useToast } from '../../ToastContext'
-
+import type { User } from '../../../types/auth'
 
 interface AccountTabProps {
   user: User
   token: string
-  onProfileReset: () => void
   onLogout: () => void
 }
 
 export default function AccountTab({
   user,
-  token,
-  onProfileReset,
   onLogout,
 }: AccountTabProps) {
-  const toast = useToast()
-  const [isResetting, setIsResetting] = useState<boolean>(false)
-  const [showConfirmReset, setShowConfirmReset] = useState<boolean>(false)
-  const [resetError, setResetError] = useState<string | null>(null)
-  const [resetSuccess, setResetSuccess] = useState<string | null>(null)
-
-  const handleResetProfile = async () => {
-    setIsResetting(true)
-    setResetError(null)
-    setResetSuccess(null)
-
-    try {
-      const res = await fetch('/api/v1/profile', {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (!res.ok) {
-        const errorData: ApiError = await res.json().catch(() => ({}))
-        throw new Error(
-          typeof errorData.detail === 'string'
-            ? errorData.detail
-            : 'Failed to reset profile'
-        )
-      }
-
-      setResetSuccess('Profile fields have been reset.')
-      toast.success('All personal profile fields have been cleared from the database.', 'Profile Reset')
-      setShowConfirmReset(false)
-      onProfileReset()
-      setTimeout(() => setResetSuccess(null), 4000)
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'An error occurred'
-      setResetError(msg)
-      toast.error(msg, 'Reset Failed')
-    } finally {
-      setIsResetting(false)
-    }
-  }
-
   const formattedDate = user.created_at
     ? new Date(user.created_at).toLocaleDateString('en-US', {
         year: 'numeric',
@@ -72,24 +24,10 @@ export default function AccountTab({
         <div>
           <h4 className="settings-pane-title">Account &amp; Security</h4>
           <p className="settings-pane-desc">
-            View authentication session parameters, account metadata, or reset saved profile data.
+            View authentication session parameters and account metadata.
           </p>
         </div>
       </div>
-
-      {resetError && (
-        <div className="settings-alert-banner error" role="alert">
-          <span className="material-symbols-outlined alert-icon">error</span>
-          <span>{resetError}</span>
-        </div>
-      )}
-
-      {resetSuccess && (
-        <div className="settings-alert-banner success" role="status">
-          <span className="material-symbols-outlined alert-icon">check_circle</span>
-          <span>{resetSuccess}</span>
-        </div>
-      )}
 
       {/* Account Info */}
       <div className="settings-section-card">
@@ -160,60 +98,6 @@ export default function AccountTab({
             <span>Sign Out</span>
           </button>
         </div>
-      </div>
-
-      {/* Danger Zone: Reset Profile */}
-      <div className="settings-section-card danger" style={{ marginTop: '16px' }}>
-        <div className="settings-section-header">
-          <div className="settings-section-icon danger">
-            <span className="material-symbols-outlined">delete_sweep</span>
-          </div>
-          <div>
-            <h5 className="settings-section-title danger">Danger Zone: Reset Profile Data</h5>
-            <p className="settings-section-desc">
-              Clear your saved name, phone number, address, and social links from the database.
-            </p>
-          </div>
-        </div>
-
-        {!showConfirmReset ? (
-          <div style={{ marginTop: '12px' }}>
-            <button
-              type="button"
-              className="btn-danger-outline"
-              onClick={() => setShowConfirmReset(true)}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
-                warning
-              </span>
-              <span>Reset Profile Data</span>
-            </button>
-          </div>
-        ) : (
-          <div className="confirm-reset-box" style={{ marginTop: '12px' }}>
-            <div className="confirm-reset-text">
-              Are you sure? This will remove all personal profile details from the database. Your user account and login will remain intact.
-            </div>
-            <div className="confirm-reset-actions">
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setShowConfirmReset(false)}
-                disabled={isResetting}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn-danger-filled"
-                onClick={handleResetProfile}
-                disabled={isResetting}
-              >
-                {isResetting ? 'Resetting...' : 'Yes, Reset My Profile'}
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )

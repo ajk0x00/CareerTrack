@@ -46,18 +46,6 @@ export default function SettingsModal({
     }
   }
 
-  const handleProfileReset = () => {
-    if (onProfileUpdated) {
-      onProfileUpdated({
-        ...user,
-        name: null,
-        phone: null,
-        socials: null,
-        address: null,
-      })
-    }
-  }
-
   return (
     <div
       className="modal-backdrop"
@@ -130,7 +118,6 @@ export default function SettingsModal({
               <AccountTab
                 user={user}
                 token={token}
-                onProfileReset={handleProfileReset}
                 onLogout={onLogout || (() => {})}
               />
             )}

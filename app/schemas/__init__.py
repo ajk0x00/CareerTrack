@@ -7,7 +7,6 @@ from app.schemas.auth import (
 from app.schemas.profile import (
     AddressSchema,
     ProfileBase,
-    ProfileCreate,
     ProfileResponse,
     ProfileUpdate,
     SocialsSchema,
@@ -16,7 +15,6 @@ from app.schemas.profile import (
 __all__ = [
     "AddressSchema",
     "ProfileBase",
-    "ProfileCreate",
     "ProfileResponse",
     "ProfileUpdate",
     "SocialsSchema",
