@@ -23,6 +23,10 @@ careerTrack/
 │       ├── config.py        # Typed settings (App, Server, Postgres, Pool)
 │       ├── database.py      # Async SQLAlchemy engine, sessionmaker, get_db, Base model
 │       └── logging.py       # Production logging configuration
+├── frontend/                # Barebone React + TypeScript + Vite frontend
+│   ├── src/                 # Application source (App.tsx, main.tsx, index.css)
+│   ├── package.json
+│   └── vite.config.ts       # Configured with proxy to FastAPI backend
 ├── alembic.ini              # Alembic root configuration
 ├── .dockerignore
 ├── .env.example
