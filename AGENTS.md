@@ -39,6 +39,7 @@ Approved dependencies: `fastapi`, `uvicorn[standard]`, `pydantic-settings`, `sql
 - Write code to the production standard of the technology you're using: full error handling, no hardcoded secrets, no debug leftovers.
 - Use strict typing everywhere. Python: annotate every function and use `Mapped[...]` for model columns. TypeScript: don't use `any` or `// @ts-ignore`.
 - Prefer the standard library over new packages.
+- use [BE] tag in backend related commits, use [FE] tag in frontend related commits.
 
 ### Backend (`app/`)
 - Use `lifespan` for startup and shutdown. Never use `@app.on_event`.

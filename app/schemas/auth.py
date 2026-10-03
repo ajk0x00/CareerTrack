@@ -40,5 +40,9 @@ class UserResponse(BaseModel):
 
     id: int
     email: str
+    name: str | None = None
+    phone: str | None = None
+    socials: dict[str, str] | None = None
+    address: dict[str, str] | None = None
     is_active: bool
     created_at: datetime
