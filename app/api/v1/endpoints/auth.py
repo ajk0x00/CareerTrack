@@ -1,3 +1,4 @@
+from datetime import timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -73,7 +74,8 @@ async def login(
             detail="Inactive user account",
         )
 
-    access_token = create_access_token(subject=user.id)
+    expires_delta = timedelta(days=30) if data.remember_me else None
+    access_token = create_access_token(subject=user.id, expires_delta=expires_delta)
     return TokenResponse(access_token=access_token, token_type="bearer")
 
 

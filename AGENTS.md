@@ -58,6 +58,7 @@ Approved dependencies: `fastapi`, `uvicorn[standard]`, `pydantic-settings`, `sql
 ### Frontend (`frontend/`)
 - Call the backend with relative URLs (`/api/v1/...`). The Vite dev server proxies `/api` and `/healthz` to `localhost:8000`.
 - Style with plain CSS using the tokens in `src/index.css`. Don't add CSS frameworks or UI kits unless the user asks.
+- Break the UI Down into reusable components whenever is possible
 
 ### Infra
 - `docker compose up` starts **only the API** and connects to an external Postgres (that's the production model).
