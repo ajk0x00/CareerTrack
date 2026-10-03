@@ -25,11 +25,13 @@ export default function UserMenu({
     return () => document.removeEventListener('mousedown', handleOutsideClick)
   }, [])
 
-  // Derive a user-friendly name from email (e.g. "Alex Chen" or capitalizing local part)
+  // Derive a user-friendly name from user.name or email
   const displayName =
-    user.email === 'demo@careertrack.app'
+    user.name ||
+    (user.email === 'demo@careertrack.app'
       ? 'Alex Chen'
-      : user.email.split('@')[0].replace(/[._]/g, ' ')
+      : user.email.split('@')[0].replace(/[._]/g, ' '))
+
 
   const initial = (displayName.charAt(0) || 'U').toUpperCase()
 

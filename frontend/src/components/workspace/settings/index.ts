@@ -1,0 +1,6 @@
+export { default as SettingsSidebar } from './SettingsSidebar'
+export type { SettingsTabId } from './SettingsSidebar'
+export { default as ProfileTab } from './ProfileTab'
+export { default as PreferencesTab } from './PreferencesTab'
+export { default as OptimizationTab } from './OptimizationTab'
+export { default as AccountTab } from './AccountTab'

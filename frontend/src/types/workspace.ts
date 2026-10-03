@@ -22,4 +22,9 @@ export interface UserPreferences {
   targetComp: string
   workplacePreference: 'Remote (Worldwide)' | 'Hybrid (San Francisco / NYC)' | 'On-site'
   aggressiveMetrics: boolean
+  targetIndustry?: string
+  seniorityLevel?: 'Entry-Level' | 'Mid-Senior' | 'Staff / Principal' | 'Executive / Director'
+  atsKeywordDensity?: 'Standard' | 'Aggressive' | 'Maximum Match'
+  actionVerbTone?: 'Dynamic Engineering' | 'Leadership & Strategic' | 'Research & Analytical'
 }
+

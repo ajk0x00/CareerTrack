@@ -1,11 +1,23 @@
 import { useState } from 'react'
+import type { User } from '../../types/auth'
 import type { UserPreferences } from '../../types/workspace'
+import {
+  SettingsSidebar,
+  ProfileTab,
+  PreferencesTab,
+  OptimizationTab,
+  AccountTab,
+  type SettingsTabId,
+} from './settings'
 
 interface SettingsModalProps {
   isOpen: boolean
   onClose: () => void
   preferences: UserPreferences
   onSavePreferences: (updated: UserPreferences) => void
+  user: User
+  onProfileUpdated?: (updatedUser: User) => void
+  onLogout?: () => void
 }
 
 export default function SettingsModal({
@@ -13,44 +25,61 @@ export default function SettingsModal({
   onClose,
   preferences,
   onSavePreferences,
+  user,
+  onProfileUpdated,
+  onLogout,
 }: SettingsModalProps) {
-  const [targetRole, setTargetRole] = useState<string>(preferences.targetRole)
-  const [targetComp, setTargetComp] = useState<string>(preferences.targetComp)
-  const [workplacePreference, setWorkplacePreference] = useState<
-    'Remote (Worldwide)' | 'Hybrid (San Francisco / NYC)' | 'On-site'
-  >(preferences.workplacePreference)
-  const [aggressiveMetrics, setAggressiveMetrics] = useState<boolean>(
-    preferences.aggressiveMetrics
-  )
+  const [activeTab, setActiveTab] = useState<SettingsTabId>('profile')
 
   if (!isOpen) return null
 
-  const handleSave = () => {
-    onSavePreferences({
-      targetRole,
-      targetComp,
-      workplacePreference,
-      aggressiveMetrics,
-    })
-    onClose()
+  const token =
+    localStorage.getItem('careerTrack_token') ||
+    sessionStorage.getItem('careerTrack_token') ||
+    ''
+
+  const handleProfileUpdated = (updatedUser: User) => {
+    if (onProfileUpdated) {
+      onProfileUpdated(updatedUser)
+    }
+  }
+
+  const handleProfileReset = () => {
+    if (onProfileUpdated) {
+      onProfileUpdated({
+        ...user,
+        name: null,
+        phone: null,
+        socials: null,
+        address: null,
+      })
+    }
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose} role="dialog" aria-modal="true">
+    <div
+      className="modal-backdrop"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="settings-dialog-title"
+    >
       <div
-        className="modal-container modal-medium"
+        className="modal-container modal-xlarge settings-dialog-container"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="modal-header">
-          <div className="modal-title-group">
-            <div className="modal-icon-badge secondary">
-              <span className="material-symbols-outlined">settings</span>
+        {/* Top Header */}
+        <div className="settings-modal-header">
+          <div className="settings-modal-header-left">
+            <div className="settings-modal-header-badge">
+              <span className="material-symbols-outlined">tune</span>
             </div>
             <div>
-              <h3 className="modal-title">Career Profile &amp; Preferences</h3>
-              <p className="modal-subtitle">
-                Tune optimization engine and salary benchmarking
+              <h3 id="settings-dialog-title" className="settings-modal-title">
+                Workspace &amp; Account Settings
+              </h3>
+              <p className="settings-modal-subtitle">
+                Manage your user profile, career preferences, optimization engine, and session
               </p>
             </div>
           </div>
@@ -58,82 +87,52 @@ export default function SettingsModal({
             type="button"
             className="modal-close-btn"
             onClick={onClose}
-            aria-label="Close modal"
+            aria-label="Close settings modal"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
 
-        {/* Content */}
-        <div className="settings-fields-body">
-          <div className="form-group-compact">
-            <label className="compact-label">Target Role Category</label>
-            <input
-              type="text"
-              className="compact-input"
-              value={targetRole}
-              onChange={(e) => setTargetRole(e.target.value)}
-            />
-          </div>
+        {/* Modal Body: Sidebar + Main Content */}
+        <div className="settings-modal-layout">
+          <SettingsSidebar
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            user={user}
+          />
 
-          <div className="grid-two-cols" style={{ marginTop: '14px' }}>
-            <div className="form-group-compact">
-              <label className="compact-label">Target Base Comp (USD)</label>
-              <input
-                type="text"
-                className="compact-input mono"
-                value={targetComp}
-                onChange={(e) => setTargetComp(e.target.value)}
+          <main className="settings-content-pane" role="tabpanel">
+            {activeTab === 'profile' && (
+              <ProfileTab
+                user={user}
+                token={token}
+                onProfileUpdated={handleProfileUpdated}
               />
-            </div>
+            )}
 
-            <div className="form-group-compact">
-              <label className="compact-label">Workplace Preference</label>
-              <select
-                className="compact-select"
-                value={workplacePreference}
-                onChange={(e) =>
-                  setWorkplacePreference(
-                    e.target.value as
-                      | 'Remote (Worldwide)'
-                      | 'Hybrid (San Francisco / NYC)'
-                      | 'On-site'
-                  )
-                }
-              >
-                <option value="Remote (Worldwide)">Remote (Worldwide)</option>
-                <option value="Hybrid (San Francisco / NYC)">Hybrid (San Francisco / NYC)</option>
-                <option value="On-site">On-site</option>
-              </select>
-            </div>
-          </div>
+            {activeTab === 'preferences' && (
+              <PreferencesTab
+                preferences={preferences}
+                onSavePreferences={onSavePreferences}
+              />
+            )}
 
-          <div className="toggle-card-row" style={{ marginTop: '16px' }}>
-            <div>
-              <div className="toggle-title">Aggressive Metric Amplification</div>
-              <div className="toggle-desc">
-                Prioritize revenue, latency, and scale percentages in bullet points
-              </div>
-            </div>
-            <button
-              type="button"
-              className={`switch-toggle ${aggressiveMetrics ? 'on' : 'off'}`}
-              onClick={() => setAggressiveMetrics(!aggressiveMetrics)}
-              aria-pressed={aggressiveMetrics}
-            >
-              <span className="toggle-handle"></span>
-            </button>
-          </div>
-        </div>
+            {activeTab === 'optimization' && (
+              <OptimizationTab
+                preferences={preferences}
+                onSavePreferences={onSavePreferences}
+              />
+            )}
 
-        {/* Footer */}
-        <div className="modal-footer" style={{ justifyContent: 'flex-end' }}>
-          <button type="button" className="btn-secondary" onClick={onClose}>
-            Cancel
-          </button>
-          <button type="button" className="action-btn-primary" onClick={handleSave}>
-            Save Preferences
-          </button>
+            {activeTab === 'account' && (
+              <AccountTab
+                user={user}
+                token={token}
+                onProfileReset={handleProfileReset}
+                onLogout={onLogout || (() => {})}
+              />
+            )}
+          </main>
         </div>
       </div>
     </div>

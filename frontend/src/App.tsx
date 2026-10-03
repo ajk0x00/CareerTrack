@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import AuthScreen from './components/AuthScreen'
 import TailoredResumeWorkspace from './components/workspace/TailoredResumeWorkspace'
+import { ToastProvider } from './components/Toast'
 import type { User } from './types/auth'
 
 export default function App() {
@@ -70,14 +71,16 @@ export default function App() {
     )
   }
 
-  if (!user) {
-    return (
-      <AuthScreen
-        onAuthSuccess={(authenticatedUser) => setUser(authenticatedUser)}
-      />
-    )
-  }
-
-  // Authenticated State View - Tailored Resume Workspace
-  return <TailoredResumeWorkspace user={user} onLogout={handleLogout} />
+  return (
+    <ToastProvider>
+      {!user ? (
+        <AuthScreen
+          onAuthSuccess={(authenticatedUser) => setUser(authenticatedUser)}
+        />
+      ) : (
+        <TailoredResumeWorkspace user={user} onLogout={handleLogout} />
+      )}
+    </ToastProvider>
+  )
 }
+

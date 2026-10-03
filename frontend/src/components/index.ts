@@ -7,6 +7,11 @@ export { default as InputField } from './InputField'
 export { default as Navbar } from './Navbar'
 export { default as SocialAuth } from './SocialAuth'
 export { default as TrustBadges } from './TrustBadges'
+export { ToastProvider } from './Toast'
+export { useToast } from './ToastContext'
+export type { ToastType, ToastItem, ToastContextValue } from './ToastContext'
+
+
 
 // Workspace Components
 export { default as TailoredResumeWorkspace } from './workspace/TailoredResumeWorkspace'

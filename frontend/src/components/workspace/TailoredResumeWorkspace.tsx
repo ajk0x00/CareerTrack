@@ -179,6 +179,9 @@ export default function TailoredResumeWorkspace({
   user,
   onLogout,
 }: TailoredResumeWorkspaceProps) {
+  const [profileOverride, setProfileOverride] = useState<User | null>(null)
+  const currentUser = profileOverride || user
+
   const [currentWorkspace, setCurrentWorkspace] = useState<string>(
     'Tailored Resume Generator'
   )
@@ -200,9 +203,12 @@ export default function TailoredResumeWorkspace({
   const [highlightFlash, setHighlightFlash] = useState<boolean>(false)
 
   const displayName =
-    user.email === 'demo@careertrack.app'
+    currentUser.name ||
+    (currentUser.email === 'demo@careertrack.app'
       ? 'Alex Chen'
-      : user.email.split('@')[0].replace(/[._]/g, ' ')
+      : currentUser.email.split('@')[0].replace(/[._]/g, ' '))
+
+
 
   // Handle Trigger Resume Generation
   const handleGenerate = () => {
@@ -238,7 +244,7 @@ export default function TailoredResumeWorkspace({
     <div className="workspace-root">
       {/* Navbar */}
       <WorkspaceNavbar
-        user={user}
+        user={currentUser}
         currentWorkspace={currentWorkspace}
         onSelectWorkspace={(name) => setCurrentWorkspace(name)}
         onOpenExperience={() => setActiveModal('experience')}
@@ -304,6 +310,9 @@ export default function TailoredResumeWorkspace({
         onClose={() => setActiveModal(null)}
         preferences={preferences}
         onSavePreferences={(updated) => setPreferences(updated)}
+        user={currentUser}
+        onProfileUpdated={(updated) => setProfileOverride(updated)}
+        onLogout={onLogout}
       />
 
       <Footer />
