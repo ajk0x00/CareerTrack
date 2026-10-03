@@ -1,11 +1,9 @@
-"""API v1 root router.
-
-Mount feature-specific routers here as your application grows.
-Example:
-    from app.api.v1.endpoints import auth
-    api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
-"""
+"""API v1 root router."""
 
 from fastapi import APIRouter
 
+from app.api.v1.endpoints import auth
+
 api_router = APIRouter()
+
+api_router.include_router(auth.router, prefix="/auth", tags=["Authentication"])

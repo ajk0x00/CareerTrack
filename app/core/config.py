@@ -48,6 +48,11 @@ class Settings(BaseSettings):
     DB_POOL_TIMEOUT: int = 30
     DB_ECHO: bool = False
 
+    # JWT Authentication
+    JWT_SECRET_KEY: str = "change-this-in-production-to-a-super-secret-key-at-least-32-bytes"
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
+
     # Logging
     LOG_LEVEL: str = "INFO"
 

@@ -17,6 +17,8 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Model metadata for 'autogenerate' support
+import app.models  # noqa: F401
+
 target_metadata = Base.metadata
 
 # Application settings for dynamic database URI
