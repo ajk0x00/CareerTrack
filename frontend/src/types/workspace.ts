@@ -103,6 +103,23 @@ export interface SkillUpdateInput {
   proficiency?: SkillProficiency
 }
 
+export interface WorkspaceItem {
+  id: number
+  user_id: number
+  name: string
+  created_at: string
+  updated_at: string
+}
+
+export interface WorkspaceCreateInput {
+  name: string
+}
+
+export interface WorkspaceUpdateInput {
+  name: string
+}
+
+
 
 
 

@@ -951,9 +951,91 @@ body {
 }
 
 /* Workspace Switcher Dropdown */
+.workspace-switcher-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .workspace-switcher-relative {
   position: relative;
   display: inline-flex;
+  align-items: center;
+}
+
+.workspace-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s ease;
+  opacity: 0.7;
+}
+
+.workspace-edit-btn:hover {
+  opacity: 1;
+  background-color: var(--surface-container);
+  color: var(--primary);
+  border-color: var(--outline-variant);
+}
+
+.ws-rename-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--surface-container-low);
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  padding: 2px 4px;
+  animation: fadeInDown 0.12s ease-out;
+}
+
+.ws-rename-input {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--on-surface);
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 3px 6px;
+  min-width: 140px;
+  max-width: 220px;
+}
+
+.ws-rename-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ws-rename-action-btn.check {
+  color: #059669;
+}
+
+.ws-rename-action-btn.check:hover {
+  background: rgba(16, 185, 129, 0.15);
+}
+
+.ws-rename-action-btn.cancel {
+  color: var(--on-surface-variant);
+}
+
+.ws-rename-action-btn.cancel:hover {
+  background: var(--surface-container-high);
 }
 
 .workspace-switcher-trigger {
@@ -1118,10 +1200,77 @@ body {
   font-weight: 700;
 }
 
+.ws-item-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ws-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.ws-item-btn:hover .ws-item-actions {
+  opacity: 1;
+}
+
+.ws-item-action-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ws-item-action-icon-btn:hover {
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+}
+
+.ws-item-action-icon-btn.delete:hover {
+  color: #dc2626;
+  background: rgba(239, 68, 68, 0.12);
+}
+
 .dropdown-divider {
   height: 1px;
   background-color: var(--surface-container);
   margin: 6px 0;
+}
+
+.ws-inline-create-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--surface-container-low);
+  margin-top: 4px;
+}
+
+.ws-inline-create-input {
+  flex: 1;
+  font-size: 12px;
+  border: 1px solid var(--outline-variant);
+  border-radius: 6px;
+  padding: 5px 8px;
+  background: var(--surface-container-lowest);
+  color: var(--on-surface);
+  outline: none;
+}
+
+.ws-inline-create-input:focus {
+  border-color: var(--primary);
 }
 
 .ws-create-btn {
