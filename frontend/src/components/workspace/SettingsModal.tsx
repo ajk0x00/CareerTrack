@@ -102,8 +102,7 @@ export default function SettingsModal({
 
             {activeTab === 'preferences' && (
               <PreferencesTab
-                preferences={preferences}
-                onSavePreferences={onSavePreferences}
+                token={token}
               />
             )}
 

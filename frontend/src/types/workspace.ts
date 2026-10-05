@@ -17,6 +17,30 @@ export interface SkillCategory {
   skills: string[]
 }
 
+export type PreferenceImportance = 'low' | 'medium' | 'high' | 'critical'
+
+export interface PreferenceItem {
+  id: number
+  user_id: number
+  title: string
+  description?: string | null
+  importance: PreferenceImportance
+  created_at: string
+  updated_at: string
+}
+
+export interface PreferenceCreateInput {
+  title: string
+  description?: string | null
+  importance: PreferenceImportance
+}
+
+export interface PreferenceUpdateInput {
+  title?: string
+  description?: string | null
+  importance?: PreferenceImportance
+}
+
 export interface UserPreferences {
   targetRole: string
   targetComp: string
@@ -27,4 +51,5 @@ export interface UserPreferences {
   atsKeywordDensity?: 'Standard' | 'Aggressive' | 'Maximum Match'
   actionVerbTone?: 'Dynamic Engineering' | 'Leadership & Strategic' | 'Research & Analytical'
 }
+
 
