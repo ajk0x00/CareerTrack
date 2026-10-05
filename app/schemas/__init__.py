@@ -1,3 +1,8 @@
+from app.schemas.api_client import (
+    ApiClientCreate,
+    ApiClientCreateResponse,
+    ApiClientResponse,
+)
 from app.schemas.auth import (
     TokenResponse,
     UserLogin,
@@ -38,6 +43,9 @@ from app.schemas.workspace import (
 
 __all__ = [
     "AddressSchema",
+    "ApiClientCreate",
+    "ApiClientCreateResponse",
+    "ApiClientResponse",
     "CompanyWorkedBase",
     "CompanyWorkedCreate",
     "CompanyWorkedResponse",

@@ -10,6 +10,7 @@ from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.core.database import close_db_connection
 from app.core.logging import setup_logging
+from app.mcp.server import create_mcp_asgi_app
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +71,9 @@ def create_app() -> FastAPI:
 
     # Include API router
     app.include_router(api_router, prefix=settings.API_V1_PREFIX)
+
+    # Mount Model Context Protocol (MCP) server for AI assistants (SSE & JSON-RPC)
+    app.mount("/mcp", create_mcp_asgi_app())
 
     return app
 
