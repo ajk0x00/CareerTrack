@@ -82,6 +82,23 @@ export interface CompanyWorkedUpdateInput {
   actively_working?: boolean
 }
 
+export type SkillProficiency = 'beginner' | 'intermediate' | 'advanced' | 'expert'
 
+export interface SkillItem {
+  id: number
+  user_id: number
+  name: string
+  proficiency: SkillProficiency
+  created_at: string
+  updated_at: string
+}
 
+export interface SkillCreateInput {
+  name: string
+  proficiency: SkillProficiency
+}
 
+export interface SkillUpdateInput {
+  name?: string
+  proficiency?: SkillProficiency
+}

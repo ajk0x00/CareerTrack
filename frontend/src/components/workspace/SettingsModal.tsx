@@ -5,6 +5,7 @@ import {
   SettingsSidebar,
   ProfileTab,
   CareerTab,
+  SkillsTab,
   PreferencesTab,
   OptimizationTab,
   AccountTab,
@@ -104,6 +105,12 @@ export default function SettingsModal({
 
             {activeTab === 'career' && (
               <CareerTab
+                token={token}
+              />
+            )}
+
+            {activeTab === 'skills' && (
+              <SkillsTab
                 token={token}
               />
             )}

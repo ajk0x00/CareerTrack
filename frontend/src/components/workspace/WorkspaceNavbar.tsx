@@ -97,9 +97,10 @@ export default function WorkspaceNavbar({
 
             <button
               type="button"
-              className={`ws-nav-link ${isSkills ? 'active' : ''}`}
+              className={`ws-nav-link ${location.pathname.startsWith('/settings/skills') || isSkills ? 'active' : ''}`}
               onClick={() => {
-                navigate('/skills')
+                navigate('/settings/skills')
+                onOpenSettings()
                 onOpenSkills()
               }}
             >
