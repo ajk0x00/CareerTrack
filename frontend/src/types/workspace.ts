@@ -52,10 +52,13 @@ export interface UserPreferences {
   actionVerbTone?: 'Dynamic Engineering' | 'Leadership & Strategic' | 'Research & Analytical'
 }
 
+export type EmploymentType = 'full_time' | 'part_time' | 'contract' | 'internship'
+
 export interface CompanyWorkedItem {
   id: number
   user_id: number
   company_name: string
+  employment_type: EmploymentType
   start_date: string
   end_date?: string | null
   actively_working: boolean
@@ -65,6 +68,7 @@ export interface CompanyWorkedItem {
 
 export interface CompanyWorkedCreateInput {
   company_name: string
+  employment_type: EmploymentType
   start_date: string
   end_date?: string | null
   actively_working: boolean
@@ -72,10 +76,12 @@ export interface CompanyWorkedCreateInput {
 
 export interface CompanyWorkedUpdateInput {
   company_name?: string
+  employment_type?: EmploymentType
   start_date?: string
   end_date?: string | null
   actively_working?: boolean
 }
+
 
 
 

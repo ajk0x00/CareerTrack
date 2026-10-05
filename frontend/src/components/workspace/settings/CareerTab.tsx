@@ -24,7 +24,7 @@ export default function CareerTab({ token: propToken }: CareerTabProps) {
 
   const [companies, setCompanies] = useState<CompanyWorkedItem[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(true)
-  const [filter, setFilter] = useState<'all' | 'active' | 'past'>('all')
+  const [filter, setFilter] = useState<'all' | 'active' | 'full_time' | 'part_time'>('all')
 
   // Form states
   const [isCreating, setIsCreating] = useState<boolean>(false)
@@ -41,7 +41,8 @@ export default function CareerTab({ token: propToken }: CareerTabProps) {
         ? '/api/v1/companies'
         : filter === 'active'
         ? '/api/v1/companies?actively_working=true'
-        : '/api/v1/companies?actively_working=false'
+        : `/api/v1/companies?employment_type=${filter}`
+
 
     fetch(url, {
       headers: {
@@ -303,12 +304,22 @@ export default function CareerTab({ token: propToken }: CareerTabProps) {
         </button>
         <button
           type="button"
-          className={`pref-filter-pill ${filter === 'past' ? 'active' : ''}`}
-          onClick={() => setFilter('past')}
+          className={`pref-filter-pill ${filter === 'full_time' ? 'active' : ''}`}
+          onClick={() => setFilter('full_time')}
         >
-          <span>Previous Roles</span>
+          <span>Full-Time</span>
           <span className="pref-filter-count">
-            {companies.filter((c) => !c.actively_working).length}
+            {companies.filter((c) => c.employment_type === 'full_time').length}
+          </span>
+        </button>
+        <button
+          type="button"
+          className={`pref-filter-pill ${filter === 'part_time' ? 'active' : ''}`}
+          onClick={() => setFilter('part_time')}
+        >
+          <span>Part-Time</span>
+          <span className="pref-filter-count">
+            {companies.filter((c) => c.employment_type === 'part_time').length}
           </span>
         </button>
       </div>
@@ -330,7 +341,6 @@ export default function CareerTab({ token: propToken }: CareerTabProps) {
               company={company}
               isLast={index === companies.length - 1}
               isEditing={editingId === company.id}
-
               onStartEdit={() => {
                 setEditingId(company.id)
                 if (isCreating) setIsCreating(false)
@@ -358,7 +368,9 @@ export default function CareerTab({ token: propToken }: CareerTabProps) {
               ? 'No company history recorded yet'
               : filter === 'active'
               ? 'No active employers found'
-              : 'No past employers found'}
+              : filter === 'full_time'
+              ? 'No full-time roles found'
+              : 'No part-time roles found'}
           </h5>
           <p className="pref-empty-desc">
             Build your professional narrative. Add companies you have worked in with start and end dates to construct a verified career timeline.

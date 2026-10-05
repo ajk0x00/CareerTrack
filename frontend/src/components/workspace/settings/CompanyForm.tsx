@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import type { CompanyWorkedCreateInput } from '../../../types/workspace'
+import type { CompanyWorkedCreateInput, EmploymentType } from '../../../types/workspace'
 
 interface CompanyFormProps {
   initialValues?: {
     company_name: string
+    employment_type?: EmploymentType
     start_date: string
     end_date?: string | null
     actively_working: boolean
@@ -26,6 +27,9 @@ export default function CompanyForm({
   submitLabel = 'Save Company',
 }: CompanyFormProps) {
   const [companyName, setCompanyName] = useState<string>(initialValues?.company_name || '')
+  const [employmentType, setEmploymentType] = useState<EmploymentType>(
+    initialValues?.employment_type || 'full_time'
+  )
   const [startDate, setStartDate] = useState<string>(initialValues?.start_date || '')
   const [endDate, setEndDate] = useState<string>(initialValues?.end_date || '')
   const [activelyWorking, setActivelyWorking] = useState<boolean>(
@@ -62,11 +66,13 @@ export default function CompanyForm({
 
     await onSubmit({
       company_name: trimmedName,
+      employment_type: employmentType,
       start_date: startDate,
       end_date: activelyWorking ? null : endDate || null,
       actively_working: activelyWorking,
     })
   }
+
 
   return (
     <form className="pref-create-card company-form-card" onSubmit={handleSubmit}>
@@ -125,7 +131,54 @@ export default function CompanyForm({
           </div>
         </div>
 
+        <div className="pref-field-group">
+          <label className="pref-field-label">Employment Type</label>
+          <div className="company-type-selector">
+            <button
+              type="button"
+              className={`company-type-choice ${employmentType === 'full_time' ? 'active' : ''}`}
+              onClick={() => setEmploymentType('full_time')}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>
+                badge
+              </span>
+              <span>Full-Time</span>
+            </button>
+            <button
+              type="button"
+              className={`company-type-choice ${employmentType === 'part_time' ? 'active' : ''}`}
+              onClick={() => setEmploymentType('part_time')}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>
+                schedule
+              </span>
+              <span>Part-Time</span>
+            </button>
+            <button
+              type="button"
+              className={`company-type-choice ${employmentType === 'contract' ? 'active' : ''}`}
+              onClick={() => setEmploymentType('contract')}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>
+                history_edu
+              </span>
+              <span>Contract</span>
+            </button>
+            <button
+              type="button"
+              className={`company-type-choice ${employmentType === 'internship' ? 'active' : ''}`}
+              onClick={() => setEmploymentType('internship')}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>
+                school
+              </span>
+              <span>Internship</span>
+            </button>
+          </div>
+        </div>
+
         <div className="company-status-toggle-row">
+
           <label className="company-checkbox-label">
             <input
               type="checkbox"

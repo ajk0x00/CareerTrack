@@ -64,12 +64,25 @@ function calculateDuration(startDateStr: string, endDateStr?: string | null, isC
   }
 }
 
+function formatEmploymentType(type?: string): { label: string; icon: string } {
+  switch (type) {
+    case 'part_time':
+      return { label: 'Part-Time', icon: 'schedule' }
+    case 'contract':
+      return { label: 'Contract', icon: 'history_edu' }
+    case 'internship':
+      return { label: 'Internship', icon: 'school' }
+    case 'full_time':
+    default:
+      return { label: 'Full-Time', icon: 'badge' }
+  }
+}
+
 export default function CompanyTimelineItem({
   company,
   isLast,
   isEditing,
   onStartEdit,
-
   onCancelEdit,
   onSaveEdit,
   onDelete,
@@ -79,6 +92,7 @@ export default function CompanyTimelineItem({
   const startFormatted = formatDate(company.start_date)
   const endFormatted = company.actively_working ? 'Present' : company.end_date ? formatDate(company.end_date) : 'Undated'
   const duration = calculateDuration(company.start_date, company.end_date, company.actively_working)
+  const empMeta = formatEmploymentType(company.employment_type)
 
   if (isEditing) {
     return (
@@ -95,6 +109,7 @@ export default function CompanyTimelineItem({
           <CompanyForm
             initialValues={{
               company_name: company.company_name,
+              employment_type: company.employment_type,
               start_date: company.start_date,
               end_date: company.end_date,
               actively_working: company.actively_working,
@@ -103,7 +118,7 @@ export default function CompanyTimelineItem({
             onCancel={onCancelEdit}
             isSubmitting={isUpdating}
             title={`Edit ${company.company_name}`}
-            subtitle="Update start date, end date, or actively working status."
+            subtitle="Update start date, end date, employment type, or actively working status."
             submitLabel="Save Changes"
           />
         </div>
@@ -137,6 +152,12 @@ export default function CompanyTimelineItem({
               <div>
                 <div className="company-timeline-name-row">
                   <h5 className="company-timeline-name">{company.company_name}</h5>
+                  <span className={`company-type-badge ${company.employment_type || 'full_time'}`}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>
+                      {empMeta.icon}
+                    </span>
+                    {empMeta.label}
+                  </span>
                   {company.actively_working ? (
                     <span className="company-active-pill">
                       <span className="company-active-dot pulse" />
@@ -146,6 +167,7 @@ export default function CompanyTimelineItem({
                     <span className="company-past-pill">Past Employer</span>
                   )}
                 </div>
+
                 <div className="company-timeline-meta-row">
                   <span className="company-date-chip">
                     <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>
