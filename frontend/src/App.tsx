@@ -28,7 +28,7 @@ export default function App() {
               />
               <Route
                 path="/skills"
-                element={<Navigate to="/settings/skills" replace />}
+                element={<TailoredResumeWorkspace initialModal="skills" />}
               />
               <Route
                 path="/settings"

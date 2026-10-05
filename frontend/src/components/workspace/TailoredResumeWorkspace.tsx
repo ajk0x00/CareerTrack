@@ -341,13 +341,40 @@ export default function TailoredResumeWorkspace({
       <SkillsModal
         isOpen={activeModal === 'skills'}
         onClose={handleCloseModal}
-        categories={categories}
-        onAddSkill={(catId, skill) => {
-          setCategories(
-            categories.map((cat) =>
-              cat.id === catId ? { ...cat, skills: [...cat.skills, skill] } : cat
-            )
-          )
+        onSkillsChange={(userSkills) => {
+          if (userSkills.length > 0) {
+            const expert = userSkills.filter((s) => s.proficiency === 'expert').map((s) => s.name)
+            const advanced = userSkills.filter((s) => s.proficiency === 'advanced').map((s) => s.name)
+            const core = userSkills
+              .filter((s) => s.proficiency === 'intermediate' || s.proficiency === 'beginner')
+              .map((s) => s.name)
+
+            const updatedCategories: SkillCategory[] = []
+            if (expert.length > 0) {
+              updatedCategories.push({
+                id: 'cat-expert',
+                title: 'Expert Proficiencies',
+                skills: expert,
+              })
+            }
+            if (advanced.length > 0) {
+              updatedCategories.push({
+                id: 'cat-adv',
+                title: 'Advanced Competencies',
+                skills: advanced,
+              })
+            }
+            if (core.length > 0) {
+              updatedCategories.push({
+                id: 'cat-core',
+                title: 'Core Technologies',
+                skills: core,
+              })
+            }
+            if (updatedCategories.length > 0) {
+              setCategories(updatedCategories)
+            }
+          }
         }}
       />
 

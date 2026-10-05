@@ -1,38 +1,33 @@
-# Skills Frontend Integration in Settings Modal
+# Skills Modal API Integration (/skills path) with Update & Delete
 
 **Date**: 2026-10-05
 
 ## 1. Changes Made
-- `frontend/src/types/workspace.ts`: Added TypeScript interfaces and types for `SkillProficiency`, `SkillItem`, `SkillCreateInput`, and `SkillUpdateInput` aligned with backend Pydantic schemas.
-- `frontend/src/components/workspace/settings/SettingsSidebar.tsx`: Added `'skills'` to `SettingsTabId` and configured the **Skills** navigation item (`psychology` icon, "Technical stack & proficiency" sublabel).
-- `frontend/src/components/workspace/settings/SkillForm.tsx`: Created reusable form component for adding and editing skills with:
-  - Input field with character length validation.
-  - Quick-pick suggestion chips (Python, TypeScript, React, Go, FastAPI, Docker, PostgreSQL, Kubernetes, AWS, etc.).
-  - Segmented proficiency selector (Beginner, Intermediate, Advanced, Expert) with level indicator bars and descriptive guidance.
-  - Action buttons with loading spinner and error banner.
-- `frontend/src/components/workspace/settings/SkillCard.tsx`: Created card component to render individual skills with:
-  - Distinct proficiency badge styling and 4-tier level progress indicators.
-  - Inline editing transition seamlessly embedding `SkillForm`.
-  - Delete confirmation trigger (`Delete? Yes / No`) and toast notifications.
-- `frontend/src/components/workspace/settings/SkillsTab.tsx`: Created main tab component for the Settings modal featuring:
-  - Header with title, context, and "+ Add Skill" toggle button.
-  - Overview metrics row (Total Skills, Expert Tier count, Advanced Tier count, Core/Intermediate count).
-  - Search input with clear button and real-time query support.
-  - Tier filter pills (`All`, `Expert`, `Advanced`, `Intermediate`, `Beginner`) with reactive count badges.
-  - Responsive grid layout displaying `SkillCard` items.
-  - Loading skeleton and dynamic empty states with CTA.
-  - Complete integration with backend `/api/v1/skills` CRUD endpoints.
-- `frontend/src/components/workspace/settings/index.ts`: Re-exported `SkillsTab`, `SkillCard`, and `SkillForm`.
-- `frontend/src/components/workspace/SettingsModal.tsx`: Mounted and rendered `SkillsTab` when `activeTab === 'skills'`.
-- `frontend/src/components/workspace/WorkspaceNavbar.tsx`: Updated the "Skills" navigation link to navigate to `/settings/skills` and open the Settings modal.
-- `frontend/src/App.tsx`: Added redirect route from `/skills` to `/settings/skills`.
-- `frontend/src/index.css`: Added styles for `.skills-tab-container`, `.skill-form-card`, `.skill-suggestions-row`, `.skill-proficiency-grid`, `.skill-choice-indicator`, `.skills-search-wrapper`, `.skills-cards-grid`, `.skill-card`, `.skill-badge`, and proficiency tier variants.
+- `frontend/src/App.tsx`: Restored `/skills` route to render `<TailoredResumeWorkspace initialModal="skills" />` so navigation directly launches `SkillsModal`.
+- `frontend/src/components/workspace/WorkspaceNavbar.tsx`: Updated the "Skills" top navigation button to navigate to `/skills` and invoke `onOpenSkills()`, directly opening `SkillsModal`.
+- `frontend/src/components/workspace/skills/`:
+  - `SkillBadge.tsx`: Created reusable proficiency badge component with custom icons (`workspace_premium` for expert, `verified` for advanced, `trending_up` for intermediate, `school` for beginner).
+  - `proficiency.ts`: Separated proficiency metadata helper functions to adhere strictly to React Fast Refresh rules.
+  - `SkillForm.tsx`: Created reusable creation and inline-editing form supporting skill name validation (max 100 chars, whitespace trimming) and interactive segmented proficiency selection (`Expert`, `Advanced`, `Intermediate`, `Beginner`).
+  - `SkillCard.tsx`: Created interactive card component with edit trigger, inline `SkillForm` transition, and delete action with loading state.
+  - `index.ts`: Re-exported skill components and utilities.
+- `frontend/src/components/workspace/SkillsModal.tsx`: Completely rebuilt `SkillsModal` with full backend API integration:
+  - Fetches skills from `/api/v1/skills` using authenticated JWT bearer token.
+  - Supports creating skills via `POST /api/v1/skills` with duplicate name validation.
+  - Supports updating skills via `PATCH /api/v1/skills/{id}`.
+  - Supports deleting skills via `DELETE /api/v1/skills/{id}`.
+  - Added filter pills (`All Skills`, `Expert`, `Advanced`, `Intermediate`, `Beginner`) with reactive count badges.
+  - Added real-time client search input with icon and instant clear button.
+  - Added rich empty states and loading skeletons.
+- `frontend/src/components/workspace/TailoredResumeWorkspace.tsx`: Connected `onSkillsChange` callback to dynamically synchronize skills from `SkillsModal` into `ResumeCanvas` categories.
+- `frontend/src/components/workspace/JobPipeline.tsx`: Cleaned up unused categories state and updated `SkillsModal` invocation.
+- `frontend/src/index.css`: Replaced legacy static chip styles with modern styles for `.skills-modal-container`, `.skills-toolbar`, `.skills-filter-pills`, `.skills-search-wrapper`, `.skills-cards-grid`, `.skill-card`, `.skill-form-drawer`, `.proficiency-selector`, and `.skill-badge`.
 
 ## 2. Why the Change Was Made (Rationale)
-- The user requested integrating the Skills model and CRUD API into the frontend.
-- Providing an intuitive, interactive UI for skills within the Settings modal empowers users to curate their verified technical competencies and domain expertise, directly supporting tailored resume generation.
-- Following the modular component architecture established by `CareerTab` and `PreferencesTab`, the feature is broken into reusable components (`SkillForm`, `SkillCard`, `SkillsTab`) ensuring maintainability and clean separation of concerns.
+- The user requested integrating the skills CRUD APIs directly into the modal at `/skills` path, with options to update and delete in the UI.
+- Direct modal access from `/skills` matches the workspace workflow where top navbar links (`Experience`, `Skills`) open focused, contextual modals over the resume workspace rather than routing away into settings.
+- The UI allows users to easily add new competencies, adjust proficiency ratings as they advance, and delete outdated entries with immediate visual feedback and live sync to the resume sheet.
 
 ## 3. Things to Lookout for in Future Development
-- **Resume Canvas Integration**: The tailored resume builder can now query `/api/v1/skills` directly to automatically categorize and populate the "Technical Competencies" section of generated markdown resumes.
-- **Bulk Import / Extraction**: In future iterations, skills can be automatically suggested or extracted from uploaded job descriptions or past resume text.
+- **ATS Resume Auto-Sync**: The `onSkillsChange` callback in `TailoredResumeWorkspace` updates `ResumeCanvas` categories live; as more resume sections are implemented, skills can be mapped directly to bullet points and keyword density metrics.
+- **Bulk Import**: Consider adding bulk skill parsing from pasted resumes or LinkedIn profiles in `SkillsModal`.

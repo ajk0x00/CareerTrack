@@ -102,3 +102,8 @@ export interface SkillUpdateInput {
   name?: string
   proficiency?: SkillProficiency
 }
+
+
+
+
+

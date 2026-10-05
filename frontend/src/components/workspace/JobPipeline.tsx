@@ -6,7 +6,7 @@ import Footer from '../Footer'
 import SettingsModal from './SettingsModal'
 import ExperienceModal from './ExperienceModal'
 import SkillsModal from './SkillsModal'
-import type { ExperienceItem, SkillCategory, UserPreferences } from '../../types/workspace'
+import type { ExperienceItem, UserPreferences } from '../../types/workspace'
 
 interface PipelineJob {
   id: string
@@ -82,7 +82,6 @@ export default function JobPipeline() {
   const [activeModal, setActiveModal] = useState<'experience' | 'skills' | 'settings' | null>(null)
 
   const [experiences, setExperiences] = useState<ExperienceItem[]>([])
-  const [categories, setCategories] = useState<SkillCategory[]>([])
   const [preferences, setPreferences] = useState<UserPreferences>({
     targetRole: 'Staff / Lead Software Engineer • Full-Stack',
     targetComp: '$220,000 - $265,000',
@@ -271,12 +270,6 @@ export default function JobPipeline() {
       <SkillsModal
         isOpen={activeModal === 'skills'}
         onClose={() => setActiveModal(null)}
-        categories={categories}
-        onAddSkill={(catId, skill) => {
-          setCategories(
-            categories.map((c) => (c.id === catId ? { ...c, skills: [...c.skills, skill] } : c))
-          )
-        }}
       />
 
       <SettingsModal
