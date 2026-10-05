@@ -4,6 +4,12 @@ from app.schemas.auth import (
     UserRegister,
     UserResponse,
 )
+from app.schemas.company import (
+    CompanyWorkedBase,
+    CompanyWorkedCreate,
+    CompanyWorkedResponse,
+    CompanyWorkedUpdate,
+)
 from app.schemas.preference import (
     PreferenceBase,
     PreferenceCreate,
@@ -20,6 +26,10 @@ from app.schemas.profile import (
 
 __all__ = [
     "AddressSchema",
+    "CompanyWorkedBase",
+    "CompanyWorkedCreate",
+    "CompanyWorkedResponse",
+    "CompanyWorkedUpdate",
     "PreferenceBase",
     "PreferenceCreate",
     "PreferenceResponse",
@@ -33,3 +43,4 @@ __all__ = [
     "UserRegister",
     "UserResponse",
 ]
+
