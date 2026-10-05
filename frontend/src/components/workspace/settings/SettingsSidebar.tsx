@@ -1,6 +1,6 @@
 import type { User } from '../../../types/auth'
 
-export type SettingsTabId = 'profile' | 'career' | 'preferences' | 'optimization' | 'account'
+export type SettingsTabId = 'profile' | 'career' | 'preferences' | 'optimization' | 'integrations' | 'account'
 
 interface SettingsSidebarProps {
   activeTab: SettingsTabId
@@ -42,6 +42,12 @@ const NAV_ITEMS: NavItem[] = [
     sublabel: 'Metric boost & keyword tuning',
     icon: 'auto_awesome',
     badge: 'AI',
+  },
+  {
+    id: 'integrations',
+    label: 'MCP & API Keys',
+    sublabel: 'Client ID, secret & AI setup',
+    icon: 'key',
   },
   {
     id: 'account',

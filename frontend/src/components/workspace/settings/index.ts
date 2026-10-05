@@ -4,5 +4,6 @@ export { default as ProfileTab } from './ProfileTab'
 export { default as CareerTab } from './CareerTab'
 export { default as PreferencesTab } from './PreferencesTab'
 export { default as OptimizationTab } from './OptimizationTab'
+export { default as IntegrationsTab } from './IntegrationsTab'
 export { default as AccountTab } from './AccountTab'
 

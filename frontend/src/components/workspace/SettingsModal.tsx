@@ -7,6 +7,7 @@ import {
   CareerTab,
   PreferencesTab,
   OptimizationTab,
+  IntegrationsTab,
   AccountTab,
   type SettingsTabId,
 } from './settings'
@@ -119,6 +120,12 @@ export default function SettingsModal({
               <OptimizationTab
                 preferences={preferences}
                 onSavePreferences={onSavePreferences}
+              />
+            )}
+
+            {activeTab === 'integrations' && (
+              <IntegrationsTab
+                token={token}
               />
             )}
 

@@ -119,6 +119,24 @@ export interface WorkspaceUpdateInput {
   name: string
 }
 
+export interface ApiClientItem {
+  id: number
+  name: string
+  client_id: string
+  client_secret_prefix: string
+  is_active: boolean
+  last_used_at?: string | null
+  created_at: string
+}
+
+export interface ApiClientCreateInput {
+  name: string
+}
+
+export interface ApiClientCreateResponse extends ApiClientItem {
+  client_secret: string
+}
+
 
 
 
