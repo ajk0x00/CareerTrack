@@ -1,7 +1,9 @@
 from datetime import date, datetime
-from typing import Self
+from typing import Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from app.models.company import EmploymentType
 
 
 class CompanyWorkedBase(BaseModel):
@@ -12,6 +14,10 @@ class CompanyWorkedBase(BaseModel):
         min_length=1,
         max_length=255,
         description="Name of the company worked in",
+    )
+    employment_type: EmploymentType = Field(
+        default=EmploymentType.FULL_TIME,
+        description="Type of employment (full_time, part_time, contract, internship)",
     )
     start_date: date = Field(
         ...,
@@ -35,6 +41,13 @@ class CompanyWorkedBase(BaseModel):
         if len(stripped) > 255:
             raise ValueError("Company name must not exceed 255 characters")
         return stripped
+
+    @field_validator("employment_type", mode="before")
+    @classmethod
+    def normalize_employment_type(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            return v.strip().lower().replace("-", "_").replace(" ", "_")
+        return v
 
     @model_validator(mode="after")
     def validate_dates(self) -> Self:
@@ -60,6 +73,10 @@ class CompanyWorkedUpdate(BaseModel):
         max_length=255,
         description="Updated company name",
     )
+    employment_type: EmploymentType | None = Field(
+        default=None,
+        description="Updated type of employment",
+    )
     start_date: date | None = Field(
         default=None,
         description="Updated start date",
@@ -84,6 +101,15 @@ class CompanyWorkedUpdate(BaseModel):
         if len(stripped) > 255:
             raise ValueError("Company name must not exceed 255 characters")
         return stripped
+
+    @field_validator("employment_type", mode="before")
+    @classmethod
+    def normalize_employment_type(cls, v: Any) -> Any:
+        if v is None:
+            return None
+        if isinstance(v, str):
+            return v.strip().lower().replace("-", "_").replace(" ", "_")
+        return v
 
     @model_validator(mode="after")
     def validate_dates(self) -> Self:
@@ -113,6 +139,7 @@ class CompanyWorkedResponse(BaseModel):
     id: int
     user_id: int
     company_name: str
+    employment_type: EmploymentType
     start_date: date
     end_date: date | None = None
     actively_working: bool

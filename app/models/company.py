@@ -1,9 +1,19 @@
 from datetime import date, datetime
+from enum import StrEnum
 
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
+
+
+class EmploymentType(StrEnum):
+    """Type of employment."""
+
+    FULL_TIME = "full_time"
+    PART_TIME = "part_time"
+    CONTRACT = "contract"
+    INTERNSHIP = "internship"
 
 
 class CompanyWorked(Base):
@@ -18,7 +28,14 @@ class CompanyWorked(Base):
         index=True,
     )
     company_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    employment_type: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        default=EmploymentType.FULL_TIME.value,
+        server_default=EmploymentType.FULL_TIME.value,
+    )
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
+
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     actively_working: Mapped[bool] = mapped_column(
         Boolean,

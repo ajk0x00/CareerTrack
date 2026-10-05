@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
-from app.models.company import CompanyWorked
+from app.models.company import CompanyWorked, EmploymentType
 from app.models.user import User
 from app.schemas.company import (
     CompanyWorkedCreate,
@@ -30,11 +30,17 @@ async def list_my_companies(
         bool | None,
         Query(description="Filter by actively working status"),
     ] = None,
+    employment_type: Annotated[
+        EmploymentType | None,
+        Query(description="Filter by employment type (full_time, part_time, etc.)"),
+    ] = None,
 ) -> Sequence[CompanyWorked]:
     """Returns all companies worked in by the authenticated user."""
     stmt = select(CompanyWorked).where(CompanyWorked.user_id == current_user.id)
     if actively_working is not None:
         stmt = stmt.where(CompanyWorked.actively_working == actively_working)
+    if employment_type is not None:
+        stmt = stmt.where(CompanyWorked.employment_type == employment_type.value)
 
     stmt = stmt.order_by(
         CompanyWorked.start_date.desc(),
@@ -59,6 +65,11 @@ async def create_company(
     company = CompanyWorked(
         user_id=current_user.id,
         company_name=data.company_name,
+        employment_type=(
+            data.employment_type.value
+            if isinstance(data.employment_type, EmploymentType)
+            else str(data.employment_type)
+        ),
         start_date=data.start_date,
         end_date=None if data.actively_working else data.end_date,
         actively_working=data.actively_working,
@@ -67,6 +78,7 @@ async def create_company(
     await db.flush()
     await db.refresh(company)
     return company
+
 
 
 @router.get(
@@ -145,6 +157,12 @@ async def update_company(
 
     if "company_name" in update_data and update_data["company_name"] is not None:
         company.company_name = update_data["company_name"]
+    if "employment_type" in update_data and update_data["employment_type"] is not None:
+        company.employment_type = (
+            update_data["employment_type"].value
+            if isinstance(update_data["employment_type"], EmploymentType)
+            else str(update_data["employment_type"])
+        )
     if "start_date" in update_data and update_data["start_date"] is not None:
         company.start_date = update_data["start_date"]
     if "actively_working" in update_data and update_data["actively_working"] is not None:
@@ -156,6 +174,7 @@ async def update_company(
             company.end_date = update_data["end_date"]
         else:
             company.end_date = None
+
 
     await db.flush()
     await db.refresh(company)
