@@ -1,6 +1,6 @@
 import type { User } from '../../../types/auth'
 
-export type SettingsTabId = 'profile' | 'preferences' | 'optimization' | 'account'
+export type SettingsTabId = 'profile' | 'career' | 'preferences' | 'optimization' | 'account'
 
 interface SettingsSidebarProps {
   activeTab: SettingsTabId
@@ -24,11 +24,18 @@ const NAV_ITEMS: NavItem[] = [
     icon: 'person',
   },
   {
+    id: 'career',
+    label: 'Career',
+    sublabel: 'Companies worked & timeline',
+    icon: 'work_history',
+  },
+  {
     id: 'preferences',
     label: 'Career Preferences',
     sublabel: 'Target role, comp & location',
     icon: 'tune',
   },
+
   {
     id: 'optimization',
     label: 'ATS & Optimization',

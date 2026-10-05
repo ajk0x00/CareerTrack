@@ -52,4 +52,30 @@ export interface UserPreferences {
   actionVerbTone?: 'Dynamic Engineering' | 'Leadership & Strategic' | 'Research & Analytical'
 }
 
+export interface CompanyWorkedItem {
+  id: number
+  user_id: number
+  company_name: string
+  start_date: string
+  end_date?: string | null
+  actively_working: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface CompanyWorkedCreateInput {
+  company_name: string
+  start_date: string
+  end_date?: string | null
+  actively_working: boolean
+}
+
+export interface CompanyWorkedUpdateInput {
+  company_name?: string
+  start_date?: string
+  end_date?: string | null
+  actively_working?: boolean
+}
+
+
 

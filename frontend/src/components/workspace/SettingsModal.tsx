@@ -4,11 +4,13 @@ import type { UserPreferences } from '../../types/workspace'
 import {
   SettingsSidebar,
   ProfileTab,
+  CareerTab,
   PreferencesTab,
   OptimizationTab,
   AccountTab,
   type SettingsTabId,
 } from './settings'
+
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -100,11 +102,18 @@ export default function SettingsModal({
               />
             )}
 
+            {activeTab === 'career' && (
+              <CareerTab
+                token={token}
+              />
+            )}
+
             {activeTab === 'preferences' && (
               <PreferencesTab
                 token={token}
               />
             )}
+
 
             {activeTab === 'optimization' && (
               <OptimizationTab
