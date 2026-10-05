@@ -2,7 +2,14 @@
 
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import auth, companies, preferences, profile, skills
+from app.api.v1.endpoints import (
+    auth,
+    companies,
+    preferences,
+    profile,
+    skills,
+    workspaces,
+)
 
 api_router = APIRouter()
 
@@ -11,5 +18,6 @@ api_router.include_router(companies.router, prefix="/companies", tags=["Companie
 api_router.include_router(preferences.router, prefix="/preferences", tags=["Preferences"])
 api_router.include_router(profile.router, prefix="/profile", tags=["Profile"])
 api_router.include_router(skills.router, prefix="/skills", tags=["Skills"])
+api_router.include_router(workspaces.router, prefix="/workspaces", tags=["Workspaces"])
 
 

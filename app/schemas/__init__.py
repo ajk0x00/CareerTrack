@@ -29,6 +29,12 @@ from app.schemas.skill import (
     SkillResponse,
     SkillUpdate,
 )
+from app.schemas.workspace import (
+    WorkspaceBase,
+    WorkspaceCreate,
+    WorkspaceResponse,
+    WorkspaceUpdate,
+)
 
 __all__ = [
     "AddressSchema",
@@ -52,5 +58,9 @@ __all__ = [
     "UserLogin",
     "UserRegister",
     "UserResponse",
+    "WorkspaceBase",
+    "WorkspaceCreate",
+    "WorkspaceResponse",
+    "WorkspaceUpdate",
 ]
 
