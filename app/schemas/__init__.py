@@ -23,6 +23,12 @@ from app.schemas.profile import (
     ProfileUpdate,
     SocialsSchema,
 )
+from app.schemas.skill import (
+    SkillBase,
+    SkillCreate,
+    SkillResponse,
+    SkillUpdate,
+)
 
 __all__ = [
     "AddressSchema",
@@ -37,6 +43,10 @@ __all__ = [
     "ProfileBase",
     "ProfileResponse",
     "ProfileUpdate",
+    "SkillBase",
+    "SkillCreate",
+    "SkillResponse",
+    "SkillUpdate",
     "SocialsSchema",
     "TokenResponse",
     "UserLogin",
