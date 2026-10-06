@@ -15,14 +15,17 @@
 - `frontend/src/components/workspace/settings/IntegrationsTab.tsx`: Refactored form inputs, credential boxes, and client cards to use the dedicated design system classes, integrated `useToast` for copy feedback, added quick-fill presets, and updated the configuration snippet generator to output SSE configuration (`url` with `headers`) by default with interactive tabs for `SSE (Headers)`, `SSE (URL Query)`, and `Stdio (CLI)`.
 - `frontend/vite.config.ts`: Added `/mcp` to Vite dev server proxy to ensure SSE requests proxy cleanly to the FastAPI backend.
 
+- `app/mcp/server.py`: Implemented `HybridMCPApp` and `mcp_lifespan()`, enabling concurrent support for both legacy SSE transport (`GET /sse`, `POST /messages/`) and modern Streamable HTTP transport (`POST /sse`, `POST /mcp`). Incoming HTTP `initialize` POST requests are routed to `StreamableHTTPASGIApp` while SSE event connections are routed to `SseServerTransport`.
+- `app/main.py`: Connected `mcp_lifespan()` into the FastAPI application `lifespan` manager to properly maintain the `StreamableHTTPSessionManager` background task group.
+
 ## 2. Why the Change Was Made (Rationale)
-- The user reported that text fields in the "MCP & API Keys" tab looked ugly, and that the example MCP config JSON displayed the server as stdio (`command: "python"`) while in reality the running server operates over SSE (`/mcp/sse`).
-- Previously, the inputs relied on undefined CSS class names (`input-field`, `input-label`) and non-existent CSS variables (`--bg-subtle`, `--border`), causing the browser to render default unstyled HTML input controls with raw bevels and inconsistent font sizing.
-- By replacing these with dedicated classes referencing the established design system tokens (`var(--surface-container-lowest)`, `var(--outline-variant)`, `var(--primary)`, `var(--font-mono)`), the text inputs and credential display blocks now seamlessly match the rest of the application.
-- The example MCP config JSON now defaults to the standard SSE configuration using `url: "http://localhost:8000/mcp/sse"` with `headers: { "X-Client-ID": ..., "X-Client-Secret": ... }`, and includes format switcher tabs for query-parameter URLs and local CLI stdio fallback.
+- The user reported that text fields in the "MCP & API Keys" tab looked ugly, and that configuring the MCP server URL in `mcp_config.json` threw `Error: calling "initialize": sending "initialize": Method Not Allowed`.
+- When MCP clients (like Antigravity, Gemini, or modern AI agents) connect to a remote MCP endpoint, they send a JSON-RPC `initialize` request via HTTP `POST /mcp/sse`. Because the server previously mounted only `sse_app` (which strictly defines `Route("/sse", methods=["GET"])`), any incoming POST to `/mcp/sse` returned HTTP 405 Method Not Allowed.
+- By mounting a hybrid dispatcher (`HybridMCPApp`) combining `server.sse_app` and `server.streamable_http_app`, the server now accepts both `POST` requests for Streamable HTTP initialization and `GET` requests for SSE streams on `/mcp/sse`.
+- Replaced unstyled input classes in `IntegrationsTab.tsx` with dedicated design system classes in `src/index.css`.
 
 ## 3. Things to Lookout for in Future Development
 - **Single-Display Credentials**: The generated Client Secret is only displayed once upon creation. The input field allows click-to-select and quick copying, but once dismissed it cannot be re-queried from PostgreSQL.
 - **Copy Feedback**: Inline "Copied!" state and toast feedback are synchronized to guarantee clear confirmation when copying credentials or JSON configurations.
-- **SSE Client Compatibility**: Most modern MCP clients (Cursor, Antigravity, etc.) support headers on SSE; for clients that only support plain URLs without custom headers, the `SSE (URL Query)` tab provides the pre-authenticated `?client_id=...&client_secret=...` query string.
+- **Transport Compatibility**: The MCP server at `/mcp/sse` and `/mcp` now automatically negotiates both Streamable HTTP (POST directly to endpoint) and SSE (GET to establish event stream + POST to message endpoint).
 

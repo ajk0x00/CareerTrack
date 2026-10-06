@@ -22,7 +22,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     logger.info("Starting %s in %s mode", settings.PROJECT_NAME, settings.ENVIRONMENT)
 
-    yield
+    from app.mcp.server import mcp_lifespan
+
+    async with mcp_lifespan():
+        yield
 
     logger.info("Shutting down %s", settings.PROJECT_NAME)
     await close_db_connection()

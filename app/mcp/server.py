@@ -6,10 +6,14 @@ import os
 import sys
 
 import base64
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from typing import Any
 from urllib.parse import parse_qs
 
 from mcp.server.auth.settings import AuthSettings
 from mcp.server.mcpserver import MCPServer
+from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 from mcp.server.transport_security import TransportSecuritySettings
 from starlette.types import ASGIApp, Receive, Scope, Send
 
@@ -170,15 +174,79 @@ class MCPAccessTokenMiddleware:
         await self.app(scope, receive, send)
 
 
+_streamable_manager: StreamableHTTPSessionManager | None = None
+
+
+@asynccontextmanager
+async def mcp_lifespan() -> AsyncIterator[None]:
+    """Manages the lifecycle of the MCP Streamable HTTP session manager."""
+    global _streamable_manager
+    if _streamable_manager is None:
+        create_mcp_asgi_app()
+
+    if _streamable_manager is not None:
+        async with _streamable_manager.run():
+            yield
+    else:
+        yield
+
+
+class HybridMCPApp:
+    """Dispatches requests between SSE transport and Streamable HTTP transport.
+
+    - POST to /sse, /, or "" routes to Streamable HTTP (for Antigravity, modern MCP clients).
+    - GET to /sse or POST to /messages/ routes to SSE transport (for Cursor, legacy SSE clients).
+    """
+
+    def __init__(self, sse_app: ASGIApp, http_app: ASGIApp) -> None:
+        self.sse_app = sse_app
+        self.http_app = http_app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http":
+            method = scope.get("method", "GET")
+            path = scope.get("path", "")
+
+            # Ensure Accept header accommodates Streamable HTTP if missing or partial
+            headers = list(scope.get("headers", []))
+            headers_dict = {k.decode("utf-8").lower(): v.decode("utf-8") for k, v in headers}
+            accept_val = headers_dict.get("accept", "")
+            if method == "POST" and ("text/event-stream" not in accept_val and "*/*" not in accept_val):
+                headers = [h for h in headers if h[0].lower() != b"accept"]
+                headers.append((b"accept", b"application/json, text/event-stream"))
+                scope["headers"] = headers
+
+            # Route POST /sse, POST /, or POST "" to Streamable HTTP
+            if method == "POST" and (path.endswith("/sse") or path in ("", "/")):
+                scope_copy = dict(scope)
+                scope_copy["path"] = "/sse"
+                scope_copy["raw_path"] = b"/sse"
+                await self.http_app(scope_copy, receive, send)
+                return
+
+            # Route other requests (e.g. GET /sse, POST /messages/) to SSE app
+            await self.sse_app(scope, receive, send)
+            return
+
+        await self.sse_app(scope, receive, send)
+
+
 def create_mcp_asgi_app() -> ASGIApp:
-    """Creates a configured Starlette ASGI application for mounting into FastAPI under /mcp."""
+    """Creates a configured Starlette ASGI application supporting both SSE and Streamable HTTP."""
+    global _streamable_manager
     transport_sec = TransportSecuritySettings(enable_dns_rebinding_protection=False)
-    mcp_subapp = server.sse_app(
+    sse_subapp = server.sse_app(
         sse_path="/sse",
         message_path="/messages/",
         transport_security=transport_sec,
     )
-    return MCPAccessTokenMiddleware(mcp_subapp)
+    http_subapp = server.streamable_http_app(
+        streamable_http_path="/sse",
+        transport_security=transport_sec,
+    )
+    _streamable_manager = server._lowlevel_server._session_manager
+    hybrid_app = HybridMCPApp(sse_subapp, http_subapp)
+    return MCPAccessTokenMiddleware(hybrid_app)
 
 
 def main() -> None:
