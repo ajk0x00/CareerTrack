@@ -1,11 +1,21 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { ApiClientItem, ApiClientCreateResponse } from '../../../types/workspace'
+import { useToast } from '../../ToastContext'
 
 interface IntegrationsTabProps {
   token: string
 }
 
+const PRESET_CLIENTS = [
+  { label: 'Claude Desktop', icon: 'desktop_mac' },
+  { label: 'Cursor IDE', icon: 'terminal' },
+  { label: 'VS Code Extension', icon: 'code' },
+  { label: 'Terminal / CLI', icon: 'terminal' },
+  { label: 'Custom AI Agent', icon: 'smart_toy' },
+]
+
 export default function IntegrationsTab({ token }: IntegrationsTabProps) {
+  const toast = useToast()
   const [clients, setClients] = useState<ApiClientItem[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(Boolean(token))
   const [error, setError] = useState<string | null>(null)
@@ -94,10 +104,13 @@ export default function IntegrationsTab({ token }: IntegrationsTabProps) {
       const newClient: ApiClientCreateResponse = await res.json()
       setCreatedResult(newClient)
       setName('')
+      toast.success(`API credentials for "${newClient.name}" created!`, 'Key Generated')
       // Refresh list
       await fetchClients()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate API credentials')
+      const msg = err instanceof Error ? err.message : 'Failed to generate API credentials'
+      setError(msg)
+      toast.error(msg, 'Error')
     } finally {
       setIsSubmitting(false)
     }
@@ -126,16 +139,20 @@ export default function IntegrationsTab({ token }: IntegrationsTabProps) {
       if (createdResult && createdResult.client_id === clientId) {
         setCreatedResult(null)
       }
+      toast.success(`Credentials for "${clientName}" revoked.`, 'Revoked')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to revoke credentials')
+      const msg = err instanceof Error ? err.message : 'Failed to revoke credentials'
+      setError(msg)
+      toast.error(msg, 'Error')
     }
   }
 
-  const handleCopy = (text: string, identifier: string) => {
+  const handleCopy = (text: string, identifier: string, label: string = 'Text') => {
     navigator.clipboard.writeText(text)
     setCopiedId(identifier)
+    toast.success(`${label} copied to clipboard!`, 'Copied')
     setTimeout(() => {
-      setCopiedId(null)
+      setCopiedId((curr) => (curr === identifier ? null : curr))
     }, 2000)
   }
 
@@ -144,8 +161,8 @@ export default function IntegrationsTab({ token }: IntegrationsTabProps) {
       {
         mcpServers: {
           careertrack: {
-            command: "python",
-            args: ["-m", "app.mcp.server"],
+            command: 'python',
+            args: ['-m', 'app.mcp.server'],
             env: {
               CAREERTRACK_CLIENT_ID: clientId,
               CAREERTRACK_CLIENT_SECRET: clientSecret,
@@ -169,6 +186,19 @@ export default function IntegrationsTab({ token }: IntegrationsTabProps) {
         </div>
       </div>
 
+      {/* Info Overview Card */}
+      <div className="mcp-info-banner">
+        <div className="mcp-info-icon-wrap">
+          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>hub</span>
+        </div>
+        <div className="mcp-info-body">
+          <div className="mcp-info-title">Model Context Protocol (MCP) Integration</div>
+          <div className="mcp-info-desc">
+            MCP allows external AI tools like Claude Desktop, Cursor IDE, and custom LLM agents to securely inspect your work experience, skills matrix, career preferences, and active workspaces in real time.
+          </div>
+        </div>
+      </div>
+
       {error && (
         <div className="settings-error-banner" style={{ marginBottom: '16px' }}>
           <span className="material-symbols-outlined">error</span>
@@ -176,57 +206,66 @@ export default function IntegrationsTab({ token }: IntegrationsTabProps) {
         </div>
       )}
 
-      {/* Newly Created Credentials Modal / Callout */}
+      {/* Newly Created Credentials Card */}
       {createdResult && (
-        <div
-          className="settings-section-card"
-          style={{
-            borderColor: 'var(--primary)',
-            background: 'var(--bg-elevated)',
-            marginBottom: '20px',
-            borderLeftWidth: '4px',
-          }}
-        >
-          <div className="settings-section-header">
-            <div className="settings-section-icon" style={{ color: 'var(--primary)' }}>
-              <span className="material-symbols-outlined">key</span>
-            </div>
-            <div style={{ flex: 1 }}>
-              <h5 className="settings-section-title">New Credentials Generated</h5>
-              <p className="settings-section-desc">
-                For "{createdResult.name}" — Copy your Client Secret now. It will never be shown again!
-              </p>
+        <div className="mcp-created-card">
+          <div className="mcp-created-header">
+            <div className="mcp-created-title-group">
+              <div className="mcp-created-badge">
+                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>key</span>
+              </div>
+              <div>
+                <h5 className="mcp-created-title">New Credentials Generated</h5>
+                <p className="mcp-created-subtitle">
+                  For "{createdResult.name}" — Copy your Client Secret now. It will never be shown again!
+                </p>
+              </div>
             </div>
             <button
               type="button"
-              className="btn-secondary"
+              className="mcp-dismiss-btn"
               onClick={() => setCreatedResult(null)}
-              style={{ fontSize: '13px', padding: '4px 10px' }}
+              title="Dismiss callout"
             >
-              Done
+              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>check</span>
+              <span>Done</span>
             </button>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
+          <div className="mcp-created-warning-box">
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>warning</span>
+            <span>
+              Important: Store your Client Secret securely. It is hashed with bcrypt in PostgreSQL and cannot be retrieved later.
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {/* Client ID */}
-            <div>
-              <label className="input-label" style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                Client ID
-              </label>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div className="mcp-cred-row">
+              <div className="mcp-cred-label-row">
+                <span className="mcp-cred-label">
+                  <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>tag</span>
+                  Client ID
+                </span>
+                <span className="mcp-cred-tag public">Public Identifier</span>
+              </div>
+              <div className="mcp-cred-input-box">
+                <span className="material-symbols-outlined mcp-cred-icon">fingerprint</span>
                 <input
                   type="text"
                   readOnly
                   value={createdResult.client_id}
-                  className="input-field mono"
-                  style={{ background: 'var(--bg-subtle)' }}
+                  className="mcp-cred-input"
+                  onClick={(e) => (e.target as HTMLInputElement).select()}
+                  aria-label="Client ID"
                 />
                 <button
                   type="button"
-                  className="btn-secondary"
-                  onClick={() => handleCopy(createdResult.client_id, 'new-client-id')}
+                  className={`mcp-copy-btn ${copiedId === 'new-client-id' ? 'copied' : ''}`}
+                  onClick={() => handleCopy(createdResult.client_id, 'new-client-id', 'Client ID')}
+                  title="Copy Client ID"
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>
                     {copiedId === 'new-client-id' ? 'check' : 'content_copy'}
                   </span>
                   <span>{copiedId === 'new-client-id' ? 'Copied' : 'Copy'}</span>
@@ -235,24 +274,33 @@ export default function IntegrationsTab({ token }: IntegrationsTabProps) {
             </div>
 
             {/* Client Secret */}
-            <div>
-              <label className="input-label" style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                Client Secret (Save this now!)
-              </label>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div className="mcp-cred-row">
+              <div className="mcp-cred-label-row">
+                <span className="mcp-cred-label">
+                  <span className="material-symbols-outlined" style={{ fontSize: '15px', color: 'var(--error)' }}>
+                    lock
+                  </span>
+                  Client Secret
+                </span>
+                <span className="mcp-cred-tag secret">Show Once • Secret</span>
+              </div>
+              <div className="mcp-cred-input-box highlight">
+                <span className="material-symbols-outlined mcp-cred-icon secret-icon">vpn_key</span>
                 <input
                   type="text"
                   readOnly
                   value={createdResult.client_secret}
-                  className="input-field mono"
-                  style={{ background: 'var(--bg-subtle)', color: 'var(--primary)' }}
+                  className="mcp-cred-input secret-val"
+                  onClick={(e) => (e.target as HTMLInputElement).select()}
+                  aria-label="Client Secret"
                 />
                 <button
                   type="button"
-                  className="btn-primary"
-                  onClick={() => handleCopy(createdResult.client_secret, 'new-client-secret')}
+                  className={`mcp-copy-btn mcp-copy-btn-primary ${copiedId === 'new-client-secret' ? 'copied' : ''}`}
+                  onClick={() => handleCopy(createdResult.client_secret, 'new-client-secret', 'Client Secret')}
+                  title="Copy Client Secret"
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>
                     {copiedId === 'new-client-secret' ? 'check' : 'content_copy'}
                   </span>
                   <span>{copiedId === 'new-client-secret' ? 'Copied' : 'Copy Secret'}</span>
@@ -261,41 +309,32 @@ export default function IntegrationsTab({ token }: IntegrationsTabProps) {
             </div>
 
             {/* MCP Config Snippet */}
-            <div style={{ marginTop: '8px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                  Claude Desktop / Cursor Configuration:
-                </span>
+            <div className="mcp-code-card">
+              <div className="mcp-code-header">
+                <div className="mcp-code-title">
+                  <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>terminal</span>
+                  <span>claude_desktop_config.json</span>
+                  <span className="mcp-code-badge">MCP v1</span>
+                </div>
                 <button
                   type="button"
-                  className="btn-secondary"
-                  style={{ fontSize: '12px', padding: '2px 8px' }}
+                  className={`mcp-code-copy-btn ${copiedId === 'mcp-config' ? 'copied' : ''}`}
                   onClick={() =>
                     handleCopy(
                       getMcpConfigSnippet(createdResult.client_id, createdResult.client_secret),
-                      'mcp-config'
+                      'mcp-config',
+                      'Configuration JSON'
                     )
                   }
+                  title="Copy Configuration JSON"
                 >
                   <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>
                     {copiedId === 'mcp-config' ? 'check' : 'content_copy'}
                   </span>
-                  <span>{copiedId === 'mcp-config' ? 'Copied' : 'Copy JSON'}</span>
+                  <span>{copiedId === 'mcp-config' ? 'Copied!' : 'Copy JSON'}</span>
                 </button>
               </div>
-              <pre
-                className="mono"
-                style={{
-                  background: 'var(--bg-subtle)',
-                  padding: '10px 12px',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  overflowX: 'auto',
-                  border: '1px solid var(--border)',
-                  color: 'var(--text-primary)',
-                  margin: 0,
-                }}
-              >
+              <pre className="mcp-code-pre">
                 {getMcpConfigSnippet(createdResult.client_id, createdResult.client_secret)}
               </pre>
             </div>
@@ -311,31 +350,61 @@ export default function IntegrationsTab({ token }: IntegrationsTabProps) {
           </div>
           <div>
             <h5 className="settings-section-title">Create New Client Credentials</h5>
-            <p className="settings-section-desc">Generate a dedicated Client ID &amp; Secret for your AI desktop app or agent</p>
+            <p className="settings-section-desc">
+              Generate a dedicated Client ID &amp; Secret for your AI desktop app, IDE, or background agent
+            </p>
           </div>
         </div>
 
-        <form onSubmit={handleCreate} style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
-          <input
-            type="text"
-            className="input-field"
-            placeholder="e.g. Claude Desktop, Work Cursor IDE"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            disabled={isSubmitting}
-            required
-            style={{ flex: 1 }}
-          />
-          <button
-            type="submit"
-            className="btn-primary"
-            disabled={isSubmitting || !name.trim()}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
-              vpn_key
-            </span>
-            <span>{isSubmitting ? 'Generating...' : 'Generate Key'}</span>
-          </button>
+        <form onSubmit={handleCreate} className="mcp-create-form">
+          <div className="mcp-cred-label-row">
+            <label htmlFor="mcp-client-name-input" className="mcp-cred-label">
+              Client / Integration Name <span style={{ color: 'var(--error)' }}>*</span>
+            </label>
+            <span className="mcp-presets-label">Click preset to quick fill:</span>
+          </div>
+
+          <div className="mcp-create-row">
+            <div className="mcp-input-wrap">
+              <span className="material-symbols-outlined mcp-input-icon">devices</span>
+              <input
+                id="mcp-client-name-input"
+                type="text"
+                className="mcp-text-input"
+                placeholder="e.g. Claude Desktop (MacBook), Work Cursor IDE, Terminal Agent"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={isSubmitting}
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              className="mcp-generate-btn"
+              disabled={isSubmitting || !name.trim()}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                vpn_key
+              </span>
+              <span>{isSubmitting ? 'Generating...' : 'Generate Key'}</span>
+            </button>
+          </div>
+
+          <div className="mcp-presets-wrap">
+            {PRESET_CLIENTS.map((preset) => (
+              <button
+                key={preset.label}
+                type="button"
+                className="mcp-preset-chip"
+                onClick={() => setName(preset.label)}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>
+                  {preset.icon}
+                </span>
+                <span>{preset.label}</span>
+              </button>
+            ))}
+          </div>
         </form>
       </div>
 
@@ -343,7 +412,7 @@ export default function IntegrationsTab({ token }: IntegrationsTabProps) {
       <div className="settings-section-card" style={{ marginTop: '16px' }}>
         <div className="settings-section-header">
           <div className="settings-section-icon">
-            <span className="material-symbols-outlined">devices</span>
+            <span className="material-symbols-outlined">key</span>
           </div>
           <div>
             <h5 className="settings-section-title">Active API Clients</h5>
@@ -356,15 +425,18 @@ export default function IntegrationsTab({ token }: IntegrationsTabProps) {
         </div>
 
         {isLoading ? (
-          <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+          <div style={{ padding: '28px', textAlign: 'center', color: 'var(--on-surface-variant)', fontSize: '13px' }}>
             Loading API client credentials...
           </div>
         ) : clients.length === 0 ? (
-          <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px' }}>
-            Generate your first Client ID and Secret above to connect AI assistants via MCP.
+          <div style={{ padding: '28px 16px', textAlign: 'center', color: 'var(--on-surface-variant)', fontSize: '13px' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '32px', color: 'var(--outline)', display: 'block', margin: '0 auto 8px' }}>
+              key_off
+            </span>
+            No active credentials. Generate your first Client ID and Secret above to connect AI assistants via MCP.
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
+          <div className="mcp-clients-list">
             {clients.map((client) => {
               const createdDate = new Date(client.created_at).toLocaleDateString('en-US', {
                 month: 'short',
@@ -379,84 +451,61 @@ export default function IntegrationsTab({ token }: IntegrationsTabProps) {
                 : 'Never used'
 
               return (
-                <div
-                  key={client.id}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '12px 14px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--border)',
-                    background: 'var(--bg-subtle)',
-                  }}
-                >
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)' }}>
-                        {client.name}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: '11px',
-                          padding: '1px 6px',
-                          borderRadius: '10px',
-                          background: client.is_active ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                          color: client.is_active ? 'var(--success)' : 'var(--error)',
-                          fontWeight: 500,
-                        }}
-                      >
-                        {client.is_active ? 'Active' : 'Inactive'}
+                <div key={client.id} className="mcp-client-item">
+                  <div className="mcp-client-main">
+                    <div className="mcp-client-avatar">
+                      <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>
+                        smart_toy
                       </span>
                     </div>
-
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', fontSize: '12px' }}>
-                      <span className="mono" style={{ color: 'var(--text-secondary)' }}>
-                        ID: {client.client_id}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleCopy(client.client_id, `cid-${client.id}`)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: 'var(--primary)',
-                          cursor: 'pointer',
-                          padding: 0,
-                          fontSize: '12px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '2px',
-                        }}
-                      >
-                        <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>
-                          {copiedId === `cid-${client.id}` ? 'check' : 'content_copy'}
+                    <div className="mcp-client-details">
+                      <div className="mcp-client-title-row">
+                        <span className="mcp-client-name">{client.name}</span>
+                        <span className={`mcp-client-pill ${client.is_active ? 'active' : 'inactive'}`}>
+                          <span className="pulse-dot" style={{ width: '5px', height: '5px' }} />
+                          {client.is_active ? 'Active' : 'Revoked'}
                         </span>
-                        <span>{copiedId === `cid-${client.id}` ? 'Copied' : 'Copy'}</span>
-                      </button>
-                      <span style={{ color: 'var(--text-tertiary)' }}>•</span>
-                      <span className="mono" style={{ color: 'var(--text-tertiary)' }}>
-                        Secret: {client.client_secret_prefix}
-                      </span>
-                    </div>
+                      </div>
 
-                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
-                      Created {createdDate} • {lastUsedText}
+                      <div className="mcp-client-chips-row">
+                        <div className="mcp-id-chip">
+                          <span style={{ color: 'var(--outline)', fontSize: '10.5px' }}>ID:</span>
+                          <span>{client.client_id}</span>
+                          <button
+                            type="button"
+                            className="mcp-id-chip-copy"
+                            onClick={() => handleCopy(client.client_id, `cid-${client.id}`, 'Client ID')}
+                            title="Copy Client ID"
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>
+                              {copiedId === `cid-${client.id}` ? 'check' : 'content_copy'}
+                            </span>
+                          </button>
+                        </div>
+
+                        <div className="mcp-secret-prefix-chip">
+                          <span style={{ color: 'var(--outline)', fontSize: '10.5px', marginRight: '4px' }}>SECRET:</span>
+                          <span>{client.client_secret_prefix}••••••••</span>
+                        </div>
+                      </div>
+
+                      <div className="mcp-client-meta">
+                        <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>calendar_today</span>
+                        <span>Created {createdDate}</span>
+                        <span style={{ opacity: 0.5 }}>•</span>
+                        <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>history</span>
+                        <span>{lastUsedText}</span>
+                      </div>
                     </div>
                   </div>
 
                   <button
                     type="button"
-                    className="btn-secondary"
+                    className="mcp-revoke-btn"
                     onClick={() => handleRevoke(client.client_id, client.name)}
-                    style={{
-                      color: 'var(--error)',
-                      borderColor: 'rgba(239, 68, 68, 0.3)',
-                      fontSize: '12px',
-                      padding: '4px 10px',
-                    }}
+                    title="Revoke access immediately"
                   >
-                    <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
                       delete
                     </span>
                     <span>Revoke</span>
@@ -470,3 +519,4 @@ export default function IntegrationsTab({ token }: IntegrationsTabProps) {
     </div>
   )
 }
+
