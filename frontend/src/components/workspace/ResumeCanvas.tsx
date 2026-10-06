@@ -29,7 +29,7 @@ export default function ResumeCanvas({
   const [activeTab, setActiveTab] = useState<'rendered' | 'markdown'>('rendered')
 
   const handleExportPDF = () => {
-    alert('Preparing high-resolution PDF with embedded ATS vector metadata...')
+    window.print()
   }
 
   const handleDownloadDOCX = () => {
@@ -147,6 +147,7 @@ export default function ResumeCanvas({
 
           {activeTab === 'rendered' ? (
             <RenderedResume
+              markdown={markdownContent}
               userName={userName}
               roleTitle={roleTitle}
               company={company}

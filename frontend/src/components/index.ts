@@ -25,5 +25,6 @@ export { default as JobDescriptionPanel } from './workspace/JobDescriptionPanel'
 export { default as ResumeCanvas } from './workspace/ResumeCanvas'
 export { default as RenderedResume } from './workspace/RenderedResume'
 export { default as MarkdownEditor } from './workspace/MarkdownEditor'
+export { default as MarkdownRenderer } from './workspace/MarkdownRenderer'
 export { default as JobPipeline } from './workspace/JobPipeline'
 

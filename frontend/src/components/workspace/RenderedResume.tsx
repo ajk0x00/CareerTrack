@@ -1,20 +1,26 @@
 import type { ExperienceItem, SkillCategory } from '../../types/workspace'
+import MarkdownRenderer from './MarkdownRenderer'
 
 interface RenderedResumeProps {
-  userName: string
-  roleTitle: string
-  company: string
-  experiences: ExperienceItem[]
-  categories: SkillCategory[]
+  markdown?: string
+  userName?: string
+  roleTitle?: string
+  company?: string
+  experiences?: ExperienceItem[]
+  categories?: SkillCategory[]
 }
 
 export default function RenderedResume({
-  userName,
-  roleTitle,
-  company,
-  experiences,
-  categories,
+  markdown,
+  userName = 'ALEX CHEN',
+  roleTitle = 'Staff Product Engineer',
+  company = 'Stripe',
+  experiences = [],
+  categories = [],
 }: RenderedResumeProps) {
+  if (markdown && markdown.trim()) {
+    return <MarkdownRenderer markdown={markdown} />
+  }
   return (
     <article className="resume-sheet">
       {/* Resume Header */}
