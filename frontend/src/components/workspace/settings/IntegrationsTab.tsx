@@ -27,6 +27,7 @@ export default function IntegrationsTab({ token }: IntegrationsTabProps) {
 
   // Feedback on copy
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [configFormat, setConfigFormat] = useState<'sse_headers' | 'sse_query' | 'stdio'>('sse_headers')
 
   const fetchClients = useCallback(async () => {
     try {
@@ -156,7 +157,60 @@ export default function IntegrationsTab({ token }: IntegrationsTabProps) {
     }, 2000)
   }
 
-  const getMcpConfigSnippet = (clientId: string, clientSecret: string) => {
+  const getServerBaseUrl = () => {
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname || 'localhost'
+      const protocol = window.location.protocol || 'http:'
+      // When running locally in Vite dev server (port 3000), FastAPI backend runs on 8000
+      if (window.location.port === '3000') {
+        return `${protocol}//${hostname}:8000`
+      }
+      return window.location.origin
+    }
+    return 'http://localhost:8000'
+  }
+
+  const getMcpConfigSnippet = (
+    clientId: string,
+    clientSecret: string,
+    format: 'sse_headers' | 'sse_query' | 'stdio' = configFormat
+  ) => {
+    const baseUrl = getServerBaseUrl()
+    const sseUrl = `${baseUrl}/mcp/sse`
+
+    if (format === 'sse_headers') {
+      return JSON.stringify(
+        {
+          mcpServers: {
+            careertrack: {
+              url: sseUrl,
+              headers: {
+                'X-Client-ID': clientId,
+                'X-Client-Secret': clientSecret,
+              },
+            },
+          },
+        },
+        null,
+        2
+      )
+    }
+
+    if (format === 'sse_query') {
+      return JSON.stringify(
+        {
+          mcpServers: {
+            careertrack: {
+              url: `${sseUrl}?client_id=${clientId}&client_secret=${clientSecret}`,
+            },
+          },
+        },
+        null,
+        2
+      )
+    }
+
+    // Stdio CLI fallback
     return JSON.stringify(
       {
         mcpServers: {
@@ -312,16 +366,41 @@ export default function IntegrationsTab({ token }: IntegrationsTabProps) {
             <div className="mcp-code-card">
               <div className="mcp-code-header">
                 <div className="mcp-code-title">
-                  <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>terminal</span>
-                  <span>claude_desktop_config.json</span>
-                  <span className="mcp-code-badge">MCP v1</span>
+                  <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>hub</span>
+                  <span>MCP Config JSON</span>
+                  <div className="mcp-format-tabs">
+                    <button
+                      type="button"
+                      className={`mcp-format-tab ${configFormat === 'sse_headers' ? 'active' : ''}`}
+                      onClick={() => setConfigFormat('sse_headers')}
+                      title="Server-Sent Events with HTTP Headers (Cursor, Antigravity, modern IDEs)"
+                    >
+                      SSE (Headers)
+                    </button>
+                    <button
+                      type="button"
+                      className={`mcp-format-tab ${configFormat === 'sse_query' ? 'active' : ''}`}
+                      onClick={() => setConfigFormat('sse_query')}
+                      title="Server-Sent Events with Query Params in URL (Claude Desktop, universal)"
+                    >
+                      SSE (URL Query)
+                    </button>
+                    <button
+                      type="button"
+                      className={`mcp-format-tab ${configFormat === 'stdio' ? 'active' : ''}`}
+                      onClick={() => setConfigFormat('stdio')}
+                      title="Local Python CLI process (stdio)"
+                    >
+                      Stdio (CLI)
+                    </button>
+                  </div>
                 </div>
                 <button
                   type="button"
                   className={`mcp-code-copy-btn ${copiedId === 'mcp-config' ? 'copied' : ''}`}
                   onClick={() =>
                     handleCopy(
-                      getMcpConfigSnippet(createdResult.client_id, createdResult.client_secret),
+                      getMcpConfigSnippet(createdResult.client_id, createdResult.client_secret, configFormat),
                       'mcp-config',
                       'Configuration JSON'
                     )
@@ -335,7 +414,7 @@ export default function IntegrationsTab({ token }: IntegrationsTabProps) {
                 </button>
               </div>
               <pre className="mcp-code-pre">
-                {getMcpConfigSnippet(createdResult.client_id, createdResult.client_secret)}
+                {getMcpConfigSnippet(createdResult.client_id, createdResult.client_secret, configFormat)}
               </pre>
             </div>
           </div>
