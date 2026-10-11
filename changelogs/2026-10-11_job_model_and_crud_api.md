@@ -27,6 +27,17 @@
   - `PATCH /api/v1/jobs/{job_id}`: Partially updates a job with cross-field salary and date validation.
   - `DELETE /api/v1/jobs/{job_id}`: Deletes a job record (`204 No Content`) with ownership verification.
 - `app/api/v1/router.py`: Mounted jobs router under `/jobs` with tag `Jobs`.
+- `app/mcp/tools.py`: Implemented MCP read and create tools for Job:
+  - `get_jobs`: Retrieves tracked job postings with optional filters for `status` (`saved`, `applied`, `interviewing`, `offer`), `workplace_type` (`remote`, `hybrid`, `on_site`), or keyword query `query`.
+  - `get_job`: Retrieves full details of a specific job by `job_id`.
+  - `get_job_pipeline_summary`: Aggregates active pipeline counts across stages (`saved`, `applied`, `interviewing`, `offer`, `total`).
+  - `add_job` and `create_job` (alias): Adds a new job posting directly to the user's career pipeline with input validation, cross-field checks, auto-populated applied dates, and commit.
+  - `get_career_context`: Enriched unified career context snapshot with `job_pipeline` active opportunities and stage distribution.
+- `app/mcp/resources.py`: Added URI resources for direct assistant reads:
+  - `careertrack://jobs`: Returns user's active job opportunities and pipeline details.
+  - `careertrack://job-pipeline-summary`: Returns stage breakdown counts.
+  - `careertrack://career-context`: Enriched with `job_pipeline` section.
+- `app/mcp/server.py`: Updated MCP server description to include job application pipeline tracking.
 
 ## 2. Why the Change Was Made (Rationale)
 - The user requested a data model and CRUD endpoints for jobs, requiring complete details of the job posting (title, company, description, requirements, salary, location, workplace/employment type, dates) as well as the applicant's current state in their job pipeline (status stages, current interview round, applied date, excitement rating, personal notes, recruiter contact info).

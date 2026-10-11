@@ -20,6 +20,7 @@ from app.core.database import async_session_factory
 from app.mcp.auth import resolve_user
 from app.mcp.experience import calculate_experience_summary, compute_company_tenure
 from app.models.company import CompanyWorked
+from app.models.job import Job, JobStatus
 from app.models.preference import Preference, PreferenceImportance
 from app.models.skill import Skill, SkillProficiency
 from app.models.workspace import Workspace
@@ -238,6 +239,15 @@ def register_resources(server: MCPServer) -> None:
             )
             workspaces = ws_res.scalars().all()
 
+            # Job Opportunities & Pipeline
+            jobs_res = await db.execute(
+                select(Job).where(Job.user_id == user.id).order_by(Job.updated_at.desc())
+            )
+            jobs = jobs_res.scalars().all()
+            pipeline_counts = {s.value: 0 for s in JobStatus}
+            for j in jobs:
+                pipeline_counts[j.status] = pipeline_counts.get(j.status, 0) + 1
+
             payload = {
                 "profile": {
                     "id": user.id,
@@ -258,6 +268,104 @@ def register_resources(server: MCPServer) -> None:
                     "total_preferences": len(preferences),
                     "by_importance": prefs_by_importance,
                 },
+                "job_pipeline": {
+                    "total_opportunities": len(jobs),
+                    "summary_by_stage": pipeline_counts,
+                    "active_roles": [
+                        {
+                            "id": j.id,
+                            "title": j.title,
+                            "company_name": j.company_name,
+                            "status": j.status,
+                            "current_stage": j.current_stage,
+                            "location": j.location,
+                        }
+                        for j in jobs
+                    ],
+                },
                 "workspaces": [{"id": w.id, "name": w.name} for w in workspaces],
             }
             return json.dumps(payload, indent=2)
+
+    @server.resource(
+        "careertrack://jobs",
+        name="Job Pipeline Opportunities",
+        description="All job postings and active applications in the user's career pipeline.",
+        mime_type="application/json",
+    )
+    async def get_jobs_resource() -> str:
+        async with async_session_factory() as db:
+            try:
+                user = await resolve_user(db)
+            except Exception as exc:
+                raise ResourceError(f"Authentication error: {exc}") from exc
+
+            stmt = select(Job).where(Job.user_id == user.id).order_by(Job.updated_at.desc())
+            result = await db.execute(stmt)
+            jobs = result.scalars().all()
+
+            data = {
+                "jobs": [
+                    {
+                        "id": j.id,
+                        "title": j.title,
+                        "company_name": j.company_name,
+                        "status": j.status,
+                        "current_stage": j.current_stage,
+                        "job_url": j.job_url,
+                        "location": j.location,
+                        "workplace_type": j.workplace_type,
+                        "employment_type": j.employment_type,
+                        "department": j.department,
+                        "description": j.description,
+                        "requirements": j.requirements,
+                        "salary_min": j.salary_min,
+                        "salary_max": j.salary_max,
+                        "salary_currency": j.salary_currency,
+                        "salary_interval": j.salary_interval,
+                        "posted_date": j.posted_date.isoformat() if j.posted_date else None,
+                        "deadline_date": j.deadline_date.isoformat() if j.deadline_date else None,
+                        "applied_date": j.applied_date.isoformat() if j.applied_date else None,
+                        "excitement_rating": j.excitement_rating,
+                        "notes": j.notes,
+                        "contact_name": j.contact_name,
+                        "contact_email": j.contact_email,
+                        "contact_phone": j.contact_phone,
+                        "created_at": j.created_at.isoformat(),
+                        "updated_at": j.updated_at.isoformat(),
+                    }
+                    for j in jobs
+                ],
+                "total": len(jobs),
+            }
+            return json.dumps(data, indent=2)
+
+    @server.resource(
+        "careertrack://job-pipeline-summary",
+        name="Job Pipeline Summary",
+        description="Aggregate count of job applications across stages (saved, applied, interviewing, offer).",
+        mime_type="application/json",
+    )
+    async def get_job_pipeline_summary_resource() -> str:
+        async with async_session_factory() as db:
+            try:
+                user = await resolve_user(db)
+            except Exception as exc:
+                raise ResourceError(f"Authentication error: {exc}") from exc
+
+            stmt = select(Job).where(Job.user_id == user.id)
+            result = await db.execute(stmt)
+            jobs = result.scalars().all()
+
+            counts = {s.value: 0 for s in JobStatus}
+            for j in jobs:
+                counts[j.status] = counts.get(j.status, 0) + 1
+
+            data = {
+                "total": len(jobs),
+                "saved": counts.get(JobStatus.SAVED.value, 0),
+                "applied": counts.get(JobStatus.APPLIED.value, 0),
+                "interviewing": counts.get(JobStatus.INTERVIEWING.value, 0),
+                "offer": counts.get(JobStatus.OFFER.value, 0),
+            }
+            return json.dumps(data, indent=2)
