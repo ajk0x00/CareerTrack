@@ -1,0 +1,431 @@
+{
+  "version": "1.0",
+  "source": "workLog",
+  "exported_at": "2026-10-11T07:22:32.788436+00:00",
+  "database": "neondb",
+  "tables": {
+    "alembic_version": [
+      {
+        "version_num": "003_add_skills"
+      }
+    ],
+    "companies": [
+      {
+        "id": 1,
+        "user_id": 1,
+        "name": "Glowing",
+        "color": "#3b82f6",
+        "is_current": true,
+        "created_at": "2026-08-22T05:41:58.646559+00:00"
+      },
+      {
+        "id": 2,
+        "user_id": 1,
+        "name": "QBurst",
+        "color": "#8b5cf6",
+        "is_current": false,
+        "created_at": "2026-08-22T05:41:58.646559+00:00"
+      }
+    ],
+    "log_tags": [
+      {
+        "log_id": 1,
+        "tag_id": 8
+      },
+      {
+        "log_id": 5,
+        "tag_id": 4
+      },
+      {
+        "log_id": 5,
+        "tag_id": 11
+      },
+      {
+        "log_id": 5,
+        "tag_id": 8
+      },
+      {
+        "log_id": 4,
+        "tag_id": 11
+      },
+      {
+        "log_id": 3,
+        "tag_id": 9
+      },
+      {
+        "log_id": 3,
+        "tag_id": 2
+      },
+      {
+        "log_id": 2,
+        "tag_id": 8
+      },
+      {
+        "log_id": 6,
+        "tag_id": 12
+      },
+      {
+        "log_id": 7,
+        "tag_id": 4
+      },
+      {
+        "log_id": 8,
+        "tag_id": 6
+      },
+      {
+        "log_id": 8,
+        "tag_id": 13
+      },
+      {
+        "log_id": 10,
+        "tag_id": 1
+      },
+      {
+        "log_id": 10,
+        "tag_id": 8
+      },
+      {
+        "log_id": 11,
+        "tag_id": 13
+      },
+      {
+        "log_id": 9,
+        "tag_id": 14
+      },
+      {
+        "log_id": 9,
+        "tag_id": 9
+      }
+    ],
+    "skills": [
+      {
+        "id": 5,
+        "user_id": 1,
+        "name": "Java",
+        "category": "Frontend",
+        "proficiency": 4,
+        "years_experience": 1.5,
+        "last_used_year": 2026,
+        "is_active": false,
+        "created_at": "2026-08-22T10:00:31.99382+00:00",
+        "updated_at": "2026-08-22T10:00:31.99382+00:00"
+      },
+      {
+        "id": 6,
+        "user_id": 1,
+        "name": "SpringBoot",
+        "category": "Frontend",
+        "proficiency": 3,
+        "years_experience": 1.0,
+        "last_used_year": 2024,
+        "is_active": false,
+        "created_at": "2026-08-22T10:01:15.098084+00:00",
+        "updated_at": "2026-08-22T10:01:15.098084+00:00"
+      },
+      {
+        "id": 7,
+        "user_id": 1,
+        "name": "Python",
+        "category": "Frontend",
+        "proficiency": 4,
+        "years_experience": 3.0,
+        "last_used_year": 2026,
+        "is_active": true,
+        "created_at": "2026-08-22T10:01:50.966918+00:00",
+        "updated_at": "2026-08-22T10:01:50.966918+00:00"
+      },
+      {
+        "id": 8,
+        "user_id": 1,
+        "name": "Django",
+        "category": "Frontend",
+        "proficiency": 3,
+        "years_experience": 1.0,
+        "last_used_year": 2026,
+        "is_active": false,
+        "created_at": "2026-08-22T10:02:13.769421+00:00",
+        "updated_at": "2026-08-22T10:02:13.769421+00:00"
+      },
+      {
+        "id": 9,
+        "user_id": 1,
+        "name": "LLM",
+        "category": "Frontend",
+        "proficiency": 4,
+        "years_experience": 1.0,
+        "last_used_year": 2026,
+        "is_active": true,
+        "created_at": "2026-08-22T10:02:27.077157+00:00",
+        "updated_at": "2026-08-22T10:02:27.077157+00:00"
+      },
+      {
+        "id": 10,
+        "user_id": 1,
+        "name": "LangChain",
+        "category": "Frontend",
+        "proficiency": 4,
+        "years_experience": 1.0,
+        "last_used_year": 2026,
+        "is_active": true,
+        "created_at": "2026-08-22T10:02:43.130928+00:00",
+        "updated_at": "2026-08-22T10:02:43.130928+00:00"
+      }
+    ],
+    "tags": [
+      {
+        "id": 1,
+        "user_id": 1,
+        "name": "feature",
+        "color": "#10b981",
+        "created_at": "2026-08-08T09:38:59.428639+00:00"
+      },
+      {
+        "id": 2,
+        "user_id": 1,
+        "name": "bugfix",
+        "color": "#ef4444",
+        "created_at": "2026-08-08T09:38:59.457487+00:00"
+      },
+      {
+        "id": 3,
+        "user_id": 1,
+        "name": "meeting",
+        "color": "#f59e0b",
+        "created_at": "2026-08-08T09:38:59.485636+00:00"
+      },
+      {
+        "id": 4,
+        "user_id": 1,
+        "name": "planning",
+        "color": "#6366f1",
+        "created_at": "2026-08-08T09:38:59.753454+00:00"
+      },
+      {
+        "id": 5,
+        "user_id": 1,
+        "name": "code-review",
+        "color": "#8b5cf6",
+        "created_at": "2026-08-08T09:38:59.779297+00:00"
+      },
+      {
+        "id": 6,
+        "user_id": 1,
+        "name": "devops",
+        "color": "#06b6d4",
+        "created_at": "2026-08-08T09:38:59.805044+00:00"
+      },
+      {
+        "id": 8,
+        "user_id": 1,
+        "name": "optimization",
+        "color": "#ffcf24",
+        "created_at": "2026-08-08T10:07:17.324734+00:00"
+      },
+      {
+        "id": 9,
+        "user_id": 1,
+        "name": "hard-work",
+        "color": "#ff245b",
+        "created_at": "2026-08-08T10:08:12.847442+00:00"
+      },
+      {
+        "id": 11,
+        "user_id": 1,
+        "name": "research",
+        "color": "#24ff8e",
+        "created_at": "2026-08-08T10:08:53.869011+00:00"
+      },
+      {
+        "id": 12,
+        "user_id": 1,
+        "name": "efficiency",
+        "color": "#fff824",
+        "created_at": "2026-08-08T10:11:40.427107+00:00"
+      },
+      {
+        "id": 13,
+        "user_id": 1,
+        "name": "initiative",
+        "color": "#95b300",
+        "created_at": "2026-08-10T11:48:49.197581+00:00"
+      },
+      {
+        "id": 14,
+        "user_id": 1,
+        "name": "leadership",
+        "color": "#f264d3",
+        "created_at": "2026-08-20T10:40:26.629644+00:00"
+      }
+    ],
+    "users": [
+      {
+        "id": 1,
+        "username": "abhi",
+        "email": "ajk0x00@gmail.com",
+        "password_hash": "$2a$10$OFafC65m755kNzJEtUsqG.HE24XzRiAuDqhbw00aiIKus8ptbau/6",
+        "full_name": "Abhi",
+        "theme_preference": "dark",
+        "created_at": "2026-08-08T09:38:59.398314+00:00",
+        "updated_at": "2026-08-08T09:38:59.398314+00:00"
+      }
+    ],
+    "work_logs": [
+      {
+        "id": 1,
+        "user_id": 1,
+        "log_date": "2026-02-05",
+        "title": "Worked on Postgres version migration",
+        "content_markdown": "Standardized and executed the technical database migration strategy to seamlessly upgrade the core apicore production database from PostgreSQL 12 to 18.2. Performed a comprehensive application compatibility assessment across Rails 7.1 and runtime gems, evaluating zero-downtime cutover strategies, auth schema updates, and extension post-processing requirements. Authored the technical upgrade report and operational runbook, guiding the engineering team through staging validation and production cutover with zero application code changes required.",
+        "status": "done",
+        "blockers": "",
+        "achievements": "",
+        "created_at": "2026-08-08T09:45:43.773037+00:00",
+        "updated_at": "2026-08-08T10:07:20.626286+00:00",
+        "company_id": 1
+      },
+      {
+        "id": 5,
+        "user_id": 1,
+        "log_date": "2026-06-15",
+        "title": "Implemented Arrivals agent",
+        "content_markdown": "- Completed guest briefing agent code (proposed to replace Inferior SixtyFour api service with a much better and more reliable Gemini ground with Google)\n- Handled the risk of misidentification from ground with Google ( Added an intuitive easy to use ui for customers to remove or add information to the insights)\n- Optimized the workflow to generate the output within 1.5 minutes with high-quality insights (Included data from internal signals, OHIP, Book4Time, and other services)  ",
+        "status": "done",
+        "blockers": "",
+        "achievements": "",
+        "created_at": "2026-08-08T10:06:15.046375+00:00",
+        "updated_at": "2026-08-08T10:09:23.047228+00:00",
+        "company_id": 1
+      },
+      {
+        "id": 4,
+        "user_id": 1,
+        "log_date": "2026-04-20",
+        "title": "Done a research on messaging platform ratelimts and added that to the application.",
+        "content_markdown": "- Created documentation for the CS team to understand the limitations to improve customer relations.",
+        "status": "done",
+        "blockers": "",
+        "achievements": "",
+        "created_at": "2026-08-08T09:58:41.653133+00:00",
+        "updated_at": "2026-08-08T10:09:29.908641+00:00",
+        "company_id": 1
+      },
+      {
+        "id": 3,
+        "user_id": 1,
+        "log_date": "2026-03-23",
+        "title": "Done a full admin dashboard overhaul within 1 week with the help of claude",
+        "content_markdown": "- Issues fixed: 16\n- PRs raised: 27\n- Days taken: 6",
+        "status": "done",
+        "blockers": "",
+        "achievements": "",
+        "created_at": "2026-08-08T09:55:42.464447+00:00",
+        "updated_at": "2026-08-08T10:09:37.70685+00:00",
+        "company_id": 1
+      },
+      {
+        "id": 2,
+        "user_id": 1,
+        "log_date": "2026-02-17",
+        "title": "Resolved vulnerabilities raised by dependabot.",
+        "content_markdown": "With proper impact & risk assessments, upgrade critical dependencies for Rails and React applications.",
+        "status": "done",
+        "blockers": "",
+        "achievements": "",
+        "created_at": "2026-08-08T09:51:27.09331+00:00",
+        "updated_at": "2026-08-08T10:09:43.962527+00:00",
+        "company_id": 1
+      },
+      {
+        "id": 6,
+        "user_id": 1,
+        "log_date": "2026-07-14",
+        "title": "Delivered guest chat export on time",
+        "content_markdown": "- Delivered exports multiple times as per the request of Chandni\n- Finally created a feature inside the admin dashboard for her to do it by herself.",
+        "status": "done",
+        "blockers": "",
+        "achievements": "",
+        "created_at": "2026-08-08T10:11:42.667702+00:00",
+        "updated_at": "2026-08-08T10:13:48.84799+00:00",
+        "company_id": 1
+      },
+      {
+        "id": 7,
+        "user_id": 1,
+        "log_date": "2026-08-06",
+        "title": "Worked on migrating SSO authentication to GRID",
+        "content_markdown": "- Keeping the long-term plan of retiring the glowing in mind, built SSO in such a way that the grid can fully serve the SSO when the glowing retires.\n- Worked with MiniOrange and OneLogin to implement SSO",
+        "status": "done",
+        "blockers": "",
+        "achievements": "",
+        "created_at": "2026-08-08T10:21:04.416439+00:00",
+        "updated_at": "2026-08-08T10:21:04.416439+00:00",
+        "company_id": 1
+      },
+      {
+        "id": 8,
+        "user_id": 1,
+        "log_date": "2026-08-10",
+        "title": "Created configuration in nginx for providing wildcard subdomains for all employees",
+        "content_markdown": "- Now the router VM will route all *-name.company.io to the specific employee development VM.\n- This would help us to share our application to others without having to deploy to staging.",
+        "status": "done",
+        "blockers": "",
+        "achievements": "",
+        "created_at": "2026-08-10T11:48:57.145696+00:00",
+        "updated_at": "2026-08-10T11:53:57.545439+00:00",
+        "company_id": 1
+      },
+      {
+        "id": 10,
+        "user_id": 1,
+        "log_date": "2026-08-21",
+        "title": "Improved application wide for Ai agent understanding",
+        "content_markdown": "- Implemented wide event logging across all services to improve the coding agent's understanding.\n- Logs are now emitted one per request.\n- Trace IDs are implemented for async endpoints\n- Created a Cursor and Claude Code skill to query logs from Grafana.",
+        "status": "done",
+        "blockers": "",
+        "achievements": "",
+        "created_at": "2026-08-21T04:49:23.143641+00:00",
+        "updated_at": "2026-08-21T04:49:23.143641+00:00",
+        "company_id": 1
+      },
+      {
+        "id": 11,
+        "user_id": 1,
+        "log_date": "2026-08-21",
+        "title": "Created a visual separation between Admin dashboard of staging and production",
+        "content_markdown": "- Previously, staging and production of the admin dashboard, where we manage critical data about the clients and other configurations, looked the same. It was hard for the developers to differentiate between the two.\n- The developers mistakenly changed data in production. I was also on the verge of changing something, and I decided to solve the problem for good. I changed the color of the admin dashboard header, which gave the developers a clear visual difference.",
+        "status": "done",
+        "blockers": "",
+        "achievements": "No change in production by mistake after that.",
+        "created_at": "2026-08-21T04:55:14.753223+00:00",
+        "updated_at": "2026-08-21T04:55:14.753223+00:00",
+        "company_id": 1
+      },
+      {
+        "id": 9,
+        "user_id": 1,
+        "log_date": "2026-08-20",
+        "title": "Led the migration of users from glowing to grid",
+        "content_markdown": "- I've taken responsibility for migrating our users to our new and improved product.\n- Actively addressed the issues raised by users.\n\nIssues fixed: 18\nDays taken: 3 days\nAdditional issues found: 7",
+        "status": "done",
+        "blockers": "",
+        "achievements": "",
+        "created_at": "2026-08-20T10:40:34.174806+00:00",
+        "updated_at": "2026-08-21T05:01:20.345727+00:00",
+        "company_id": 1
+      },
+      {
+        "id": 12,
+        "user_id": 1,
+        "log_date": "2024-08-21",
+        "title": "Created an LLM Gateway to meter and monitor LLM usage inside Qburst",
+        "content_markdown": "- I was the one and only developer on the project, which is used by more than 3000 employees in Qburst for accessing multiple LLM models.\n- The project was created at the start of the GenAI wave and was able to work with raw LLM responses from all kinds of LLM providers, such as OpenAI, Gemini, Mistral, etc.\n- The project is now deployed full organization wide and that's one of the best contributions I made to the company",
+        "status": "done",
+        "blockers": "",
+        "achievements": "",
+        "created_at": "2026-08-21T16:23:37.784298+00:00",
+        "updated_at": "2026-08-21T16:23:37.784298+00:00",
+        "company_id": 2
+      }
+    ]
+  }
+}
