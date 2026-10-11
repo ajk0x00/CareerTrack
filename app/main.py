@@ -1,10 +1,13 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 import logging
+from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.router import api_router
 from app.core.config import get_settings
@@ -77,6 +80,33 @@ def create_app() -> FastAPI:
 
     # Mount Model Context Protocol (MCP) server for AI assistants (SSE & JSON-RPC)
     app.mount("/mcp", create_mcp_asgi_app())
+
+    # Serve built frontend SPA if present (Docker multistage build or local production bundle)
+    base_dir = Path(__file__).resolve().parent.parent
+    frontend_dist = base_dir / "frontend" / "dist"
+    if not frontend_dist.is_dir():
+        frontend_dist = Path("frontend/dist").resolve()
+
+    if frontend_dist.is_dir() and (frontend_dist / "index.html").is_file():
+        logger.info("Serving frontend SPA from %s", frontend_dist)
+        assets_dir = frontend_dist / "assets"
+        if assets_dir.is_dir():
+            app.mount("/assets", StaticFiles(directory=assets_dir), name="frontend-assets")
+
+        @app.get("/{full_path:path}", include_in_schema=False)
+        async def serve_spa(full_path: str) -> Response:
+            if full_path.startswith("api/") or full_path == "api" or full_path.startswith("mcp/") or full_path == "mcp":
+                raise HTTPException(status_code=404, detail="Not Found")
+            try:
+                candidate = (frontend_dist / full_path).resolve()
+                if candidate.is_relative_to(frontend_dist) and candidate.is_file():
+                    return FileResponse(candidate)
+            except Exception:
+                pass
+            index_html = frontend_dist / "index.html"
+            if index_html.is_file():
+                return FileResponse(index_html)
+            raise HTTPException(status_code=404, detail="Not Found")
 
     return app
 

@@ -19,3 +19,5 @@ htmlcov/
 .idea/
 *.md
 .DS_Store
+frontend/node_modules/
+frontend/dist/
