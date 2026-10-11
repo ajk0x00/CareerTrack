@@ -15,6 +15,16 @@ from app.schemas.company import (
     CompanyWorkedResponse,
     CompanyWorkedUpdate,
 )
+from app.schemas.job import (
+    JobBase,
+    JobCreate,
+    JobPipelineSummary,
+    JobResponse,
+    JobStatus,
+    JobUpdate,
+    SalaryInterval,
+    WorkplaceType,
+)
 from app.schemas.preference import (
     PreferenceBase,
     PreferenceCreate,
@@ -50,6 +60,12 @@ __all__ = [
     "CompanyWorkedCreate",
     "CompanyWorkedResponse",
     "CompanyWorkedUpdate",
+    "JobBase",
+    "JobCreate",
+    "JobPipelineSummary",
+    "JobResponse",
+    "JobStatus",
+    "JobUpdate",
     "PreferenceBase",
     "PreferenceCreate",
     "PreferenceResponse",
