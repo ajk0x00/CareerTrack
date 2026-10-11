@@ -20,7 +20,7 @@ import os
 from pathlib import Path
 import sys
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection, create_async_engine
@@ -62,13 +62,35 @@ def mask_db_url(url: str) -> str:
 
 
 def normalize_db_url(url: str) -> str:
-    """Ensures asyncpg driver is specified in PostgreSQL connection string."""
+    """Ensures asyncpg driver is specified and rewrites libpq params for asyncpg."""
     url = url.strip()
     if url.startswith("postgresql://"):
-        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
-    if url.startswith("postgres://"):
-        return url.replace("postgres://", "postgresql+asyncpg://", 1)
-    return url
+        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    elif url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+
+    parsed = urlparse(url)
+    if not parsed.query:
+        return url
+
+    query_params = parse_qs(parsed.query, keep_blank_values=True)
+    new_params: dict[str, list[str]] = {}
+
+    for k, v in query_params.items():
+        k_lower = k.lower()
+        if k_lower == "sslmode":
+            mode = v[0].lower() if v else "require"
+            if mode in ("disable", "false", "0"):
+                new_params["ssl"] = ["disable"]
+            else:
+                new_params["ssl"] = ["require"]
+        elif k_lower in ("channel_binding", "gssencmode"):
+            continue
+        else:
+            new_params[k] = v
+
+    new_query = urlencode(new_params, doseq=True)
+    return urlunparse(parsed._replace(query=new_query))
 
 
 def get_default_db_url() -> str:

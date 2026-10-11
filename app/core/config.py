@@ -1,9 +1,47 @@
 from functools import lru_cache
 import json
 from typing import Literal
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from pydantic import computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def normalize_database_url(url_str: str) -> str:
+    """Normalizes database URLs for asyncpg compatibility.
+
+    - Replaces postgresql:// and postgres:// with postgresql+asyncpg://
+    - Replaces libpq 'sslmode' query parameter with asyncpg's 'ssl' parameter
+    - Strips unsupported libpq query parameters like 'channel_binding' and 'gssencmode'
+    """
+    url_str = url_str.strip()
+    if url_str.startswith("postgresql://"):
+        url_str = url_str.replace("postgresql://", "postgresql+asyncpg://", 1)
+    elif url_str.startswith("postgres://"):
+        url_str = url_str.replace("postgres://", "postgresql+asyncpg://", 1)
+
+    parsed = urlparse(url_str)
+    if not parsed.query:
+        return url_str
+
+    query_params = parse_qs(parsed.query, keep_blank_values=True)
+    new_params: dict[str, list[str]] = {}
+
+    for k, v in query_params.items():
+        k_lower = k.lower()
+        if k_lower == "sslmode":
+            mode = v[0].lower() if v else "require"
+            if mode in ("disable", "false", "0"):
+                new_params["ssl"] = ["disable"]
+            else:
+                new_params["ssl"] = ["require"]
+        elif k_lower in ("channel_binding", "gssencmode"):
+            continue
+        else:
+            new_params[k] = v
+
+    new_query = urlencode(new_params, doseq=True)
+    return urlunparse(parsed._replace(query=new_query))
 
 
 class Settings(BaseSettings):
@@ -60,10 +98,7 @@ class Settings(BaseSettings):
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
         if self.DATABASE_URL:
-            url = str(self.DATABASE_URL)
-            if url.startswith("postgresql://"):
-                return url.replace("postgresql://", "postgresql+asyncpg://", 1)
-            return url
+            return normalize_database_url(str(self.DATABASE_URL))
         return (
             f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@"
             f"{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
