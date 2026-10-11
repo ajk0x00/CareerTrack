@@ -4,7 +4,7 @@
 
 ## 1. Changes Made
 - `data/worklog_export.json`: Saved the exported JSON dataset containing users, companies, skills, tags, work logs, and log-tag associations from the legacy workLog service.
-- `scripts/import-data`: Created an async helper CLI script to import exported workLog JSON data into local or production PostgreSQL databases:
+- `scripts/import-data.py`: Created an async helper CLI script to import exported workLog JSON data into local or production PostgreSQL databases:
   - Normalizes PostgreSQL connection URLs (ensuring `postgresql+asyncpg://` protocol).
   - Verifies presence of core CareerTrack tables (`users`, `companies_worked`, `skills`).
   - Ensures supplementary tables (`tags`, `work_logs`, `log_tags`) and indexes exist with foreign key cascade rules.
