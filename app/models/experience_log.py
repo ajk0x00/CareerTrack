@@ -2,10 +2,15 @@
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
-from sqlalchemy.orm import Mapped, mapped_column
+from typing import TYPE_CHECKING
+
+from sqlalchemy import DateTime, ForeignKey, Integer, Text, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.company import CompanyWorked
 
 
 class ExperienceLog(Base):
@@ -19,7 +24,11 @@ class ExperienceLog(Base):
         nullable=False,
         index=True,
     )
-    company_name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    company_id: Mapped[int] = mapped_column(
+        ForeignKey("companies_worked.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     description: Mapped[str] = mapped_column(Text, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
@@ -33,3 +42,14 @@ class ExperienceLog(Base):
         onupdate=func.now(),
         nullable=False,
     )
+
+    company: Mapped["CompanyWorked"] = relationship(
+        "CompanyWorked",
+        lazy="joined",
+    )
+
+    @property
+    def company_name(self) -> str:
+        """Returns the associated company's name."""
+        return self.company.company_name if self.company else ""
+
