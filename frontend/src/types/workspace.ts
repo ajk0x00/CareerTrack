@@ -232,6 +232,7 @@ export interface JobPipelineSummary {
 export interface ExperienceLogItem {
   id: number
   user_id: number
+  company_id: number
   company_name: string
   description: string
   created_at: string
@@ -239,11 +240,11 @@ export interface ExperienceLogItem {
 }
 
 export interface ExperienceLogCreateInput {
-  company_name: string
+  company_id: number
   description: string
 }
 
 export interface ExperienceLogUpdateInput {
-  company_name?: string
+  company_id?: number
   description?: string
 }

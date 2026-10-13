@@ -37,8 +37,7 @@ export default function ExperienceModal({
   // Form State
   const [showDrawer, setShowDrawer] = useState<boolean>(false)
   const [editingId, setEditingId] = useState<number | null>(null)
-  const [selectedCompany, setSelectedCompany] = useState<string>('')
-  const [customCompany, setCustomCompany] = useState<string>('')
+  const [selectedCompanyId, setSelectedCompanyId] = useState<number | ''>('')
   const [description, setDescription] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
@@ -66,7 +65,7 @@ export default function ExperienceModal({
         }
       })
 
-    // 2. Fetch Companies to populate dropdown
+    // 2. Fetch Companies Worked to populate foreign-key dropdown
     const fetchCompanies = fetch('/api/v1/companies', {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -105,8 +104,7 @@ export default function ExperienceModal({
   // Reset form
   const handleResetForm = () => {
     setEditingId(null)
-    setSelectedCompany('')
-    setCustomCompany('')
+    setSelectedCompanyId('')
     setDescription('')
     setShowDrawer(false)
   }
@@ -114,27 +112,15 @@ export default function ExperienceModal({
   // Populate form to edit an existing log
   const handleStartEdit = (log: ExperienceLogItem) => {
     setEditingId(log.id)
-    const hasCompany = companies.some((c) => c.company_name === log.company_name)
-    if (hasCompany) {
-      setSelectedCompany(log.company_name)
-      setCustomCompany('')
-    } else {
-      setSelectedCompany('__custom__')
-      setCustomCompany(log.company_name)
-    }
+    setSelectedCompanyId(log.company_id)
     setDescription(log.description)
     setShowDrawer(true)
   }
 
   // Save (Create or Update) Experience Log
   const handleSaveForm = async () => {
-    const finalCompanyName =
-      selectedCompany === '__custom__'
-        ? customCompany.trim()
-        : selectedCompany.trim() || customCompany.trim()
-
-    if (!finalCompanyName) {
-      toast.error('Please select or enter a company name', 'Validation Error')
+    if (selectedCompanyId === '') {
+      toast.error('Please select a company worked in', 'Validation Error')
       return
     }
 
@@ -142,6 +128,9 @@ export default function ExperienceModal({
       toast.error('Please provide a description of the experience', 'Validation Error')
       return
     }
+
+    const companyRecord = companies.find((c) => c.id === selectedCompanyId)
+    const companyDisplayName = companyRecord?.company_name || 'Selected Company'
 
     setIsSubmitting(true)
     try {
@@ -154,7 +143,7 @@ export default function ExperienceModal({
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            company_name: finalCompanyName,
+            company_id: Number(selectedCompanyId),
             description: description.trim(),
           }),
         })
@@ -170,7 +159,7 @@ export default function ExperienceModal({
         )
         setExperienceLogs(updatedList)
         if (onExperienceLogsChange) onExperienceLogsChange(updatedList)
-        toast.success(`Updated experience at ${finalCompanyName}`, 'Experience Updated')
+        toast.success(`Updated experience at ${companyDisplayName}`, 'Experience Updated')
       } else {
         // Create new entry
         const res = await fetch('/api/v1/experience-logs', {
@@ -180,7 +169,7 @@ export default function ExperienceModal({
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            company_name: finalCompanyName,
+            company_id: Number(selectedCompanyId),
             description: description.trim(),
           }),
         })
@@ -194,7 +183,7 @@ export default function ExperienceModal({
         const updatedList = [createdItem, ...experienceLogs]
         setExperienceLogs(updatedList)
         if (onExperienceLogsChange) onExperienceLogsChange(updatedList)
-        toast.success(`Logged experience at ${finalCompanyName}`, 'Experience Created')
+        toast.success(`Logged experience at ${companyDisplayName}`, 'Experience Created')
       }
 
       handleResetForm()
@@ -239,7 +228,7 @@ export default function ExperienceModal({
     const q = searchQuery.trim().toLowerCase()
     return experienceLogs.filter(
       (log) =>
-        log.company_name.toLowerCase().includes(q) ||
+        (log.company_name && log.company_name.toLowerCase().includes(q)) ||
         log.description.toLowerCase().includes(q)
     )
   }, [experienceLogs, searchQuery])
@@ -335,48 +324,30 @@ export default function ExperienceModal({
               <span className="drawer-subtitle">Auto-syncs to ATS Engine</span>
             </div>
 
-            {/* Company Selection Dropdown */}
+            {/* Company Selection Dropdown (Foreign Key to companies_worked) */}
             <div className="form-group-compact">
-              <label className="compact-label">Company Name *</label>
+              <label className="compact-label">Company Worked In *</label>
               <div className="input-with-icon">
                 <span className="material-symbols-outlined input-leading-icon">apartment</span>
                 <select
                   className="compact-select"
-                  value={selectedCompany}
-                  onChange={(e) => {
-                    setSelectedCompany(e.target.value)
-                    if (e.target.value !== '__custom__') {
-                      setCustomCompany('')
-                    }
-                  }}
+                  value={selectedCompanyId}
+                  onChange={(e) =>
+                    setSelectedCompanyId(e.target.value ? Number(e.target.value) : '')
+                  }
                 >
-                  <option value="">Select a company...</option>
+                  <option value="">Select a company from your career...</option>
                   {companies.map((c) => (
-                    <option key={c.id} value={c.company_name}>
-                      {c.company_name} {c.actively_working ? '(Current Employer)' : ''}
+                    <option key={c.id} value={c.id}>
+                      {c.company_name} {c.actively_working ? '(Current Role)' : ''}
                     </option>
                   ))}
-                  <option value="__custom__">+ Enter another company...</option>
                 </select>
               </div>
 
-              {/* Text input if custom selected or no companies available */}
-              {(selectedCompany === '__custom__' ||
-                (companies.length === 0 && selectedCompany === '')) && (
-                <div className="input-with-icon" style={{ marginTop: '8px' }}>
-                  <span className="material-symbols-outlined input-leading-icon">business</span>
-                  <input
-                    type="text"
-                    className="compact-input"
-                    placeholder="Enter company name..."
-                    value={customCompany}
-                    onChange={(e) => setCustomCompany(e.target.value)}
-                  />
-                </div>
-              )}
               {companies.length === 0 && (
-                <p className="hint-text">
-                  Tip: Add your employers in Career Settings to auto-populate this dropdown.
+                <p className="hint-text" style={{ color: 'var(--tertiary)' }}>
+                  No companies found. Please add your employers in Career Settings to associate experience logs with them.
                 </p>
               )}
             </div>
@@ -412,7 +383,7 @@ export default function ExperienceModal({
                 type="button"
                 className="action-btn-primary"
                 onClick={handleSaveForm}
-                disabled={isSubmitting}
+                disabled={isSubmitting || companies.length === 0}
               >
                 <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
                   {isSubmitting ? 'hourglass_top' : 'save'}
@@ -473,72 +444,79 @@ export default function ExperienceModal({
           </div>
         ) : (
           <div className="records-list">
-            {displayedList.map((item) => (
-              <div key={item.id} className="record-card">
-                <div className="record-header">
-                  <div className="record-title-row">
-                    <div className="company-avatar">
-                      {item.company_name.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <div className="company-name-row">
-                        <span className="company-name">{item.company_name}</span>
-                        <span className="badge-period">
-                          {new Date(item.created_at).toLocaleDateString(undefined, {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
-                          })}
-                        </span>
+            {displayedList.map((item) => {
+              const displayCompanyName =
+                item.company_name ||
+                companies.find((c) => c.id === item.company_id)?.company_name ||
+                'Company'
+
+              return (
+                <div key={item.id} className="record-card">
+                  <div className="record-header">
+                    <div className="record-title-row">
+                      <div className="company-avatar">
+                        {displayCompanyName.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="company-name-row">
+                          <span className="company-name">{displayCompanyName}</span>
+                          <span className="badge-period">
+                            {new Date(item.created_at).toLocaleDateString(undefined, {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                            })}
+                          </span>
+                        </div>
                       </div>
                     </div>
+
+                    <div className="record-actions">
+                      <button
+                        type="button"
+                        className="action-icon-btn"
+                        onClick={() => handleStartEdit(item)}
+                        title="Edit Experience"
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                          edit
+                        </span>
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="action-icon-btn error"
+                        onClick={() => handleDelete(item.id, displayCompanyName)}
+                        disabled={deletingId === item.id}
+                        title="Remove Experience"
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                          delete
+                        </span>
+                        <span>{deletingId === item.id ? 'Deleting...' : 'Remove'}</span>
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="record-actions">
-                    <button
-                      type="button"
-                      className="action-icon-btn"
-                      onClick={() => handleStartEdit(item)}
-                      title="Edit Experience"
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
-                        edit
+                  <div className="record-body">
+                    <p className="record-desc" style={{ whiteSpace: 'pre-wrap' }}>
+                      {item.description}
+                    </p>
+                  </div>
+
+                  <div className="record-footer">
+                    <div className="record-meta">
+                      <span className="meta-verified">
+                        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
+                          verified
+                        </span>
+                        Logged &amp; Synced
                       </span>
-                      <span>Edit</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="action-icon-btn error"
-                      onClick={() => handleDelete(item.id, item.company_name)}
-                      disabled={deletingId === item.id}
-                      title="Remove Experience"
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
-                        delete
-                      </span>
-                      <span>{deletingId === item.id ? 'Deleting...' : 'Remove'}</span>
-                    </button>
+                    </div>
                   </div>
                 </div>
-
-                <div className="record-body">
-                  <p className="record-desc" style={{ whiteSpace: 'pre-wrap' }}>
-                    {item.description}
-                  </p>
-                </div>
-
-                <div className="record-footer">
-                  <div className="record-meta">
-                    <span className="meta-verified">
-                      <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
-                        verified
-                      </span>
-                      Logged &amp; Synced
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
 
