@@ -1,66 +1,250 @@
-import { useState } from 'react'
-import type { ExperienceItem } from '../../types/workspace'
+import { useState, useEffect, useMemo } from 'react'
+import type {
+  CompanyWorkedItem,
+  ExperienceItem,
+  ExperienceLogItem,
+} from '../../types/workspace'
+import { useToast } from '../ToastContext'
 
 interface ExperienceModalProps {
   isOpen: boolean
   onClose: () => void
-  experiences: ExperienceItem[]
-  onAddExperience: (item: ExperienceItem) => void
-  onRemoveExperience: (id: string) => void
+  token?: string
+  experiences?: ExperienceItem[]
+  onAddExperience?: (item: ExperienceItem) => void
+  onRemoveExperience?: (id: string) => void
+  onExperienceLogsChange?: (items: ExperienceLogItem[]) => void
 }
 
 export default function ExperienceModal({
   isOpen,
   onClose,
-  experiences,
-  onAddExperience,
-  onRemoveExperience,
+  token: propToken,
+  onExperienceLogsChange,
 }: ExperienceModalProps) {
-  const [showDrawer, setShowDrawer] = useState<boolean>(false)
-  const [filter, setFilter] = useState<'all' | 'fulltime'>('all')
+  const toast = useToast()
+  const token =
+    propToken ||
+    localStorage.getItem('careerTrack_token') ||
+    sessionStorage.getItem('careerTrack_token') ||
+    ''
+
+  const [experienceLogs, setExperienceLogs] = useState<ExperienceLogItem[]>([])
+  const [companies, setCompanies] = useState<CompanyWorkedItem[]>([])
+  const [isLoading, setIsLoading] = useState<boolean>(() => Boolean(token))
+  const [searchQuery, setSearchQuery] = useState<string>('')
 
   // Form State
-  const [company, setCompany] = useState<string>('')
-  const [role, setRole] = useState<string>('')
-  const [period, setPeriod] = useState<string>('2022 - Present')
-  const [location, setLocation] = useState<string>('San Francisco, CA (Remote)')
+  const [showDrawer, setShowDrawer] = useState<boolean>(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [selectedCompany, setSelectedCompany] = useState<string>('')
+  const [customCompany, setCustomCompany] = useState<string>('')
   const [description, setDescription] = useState<string>('')
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
-  if (!isOpen) return null
+  // Fetch Experience Logs and Companies Worked on open
+  useEffect(() => {
+    if (!isOpen || !token) return
 
-  const handleSaveForm = () => {
-    if (!company.trim() || !role.trim()) {
-      alert('Please provide company name and role.')
-      return
+    let isMounted = true
+
+    // 1. Fetch Experience Logs
+    const fetchLogs = fetch('/api/v1/experience-logs', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load experience logs')
+        return res.json()
+      })
+      .then((data: ExperienceLogItem[]) => {
+        if (isMounted) {
+          setExperienceLogs(data)
+          if (onExperienceLogsChange) onExperienceLogsChange(data)
+        }
+      })
+
+    // 2. Fetch Companies to populate dropdown
+    const fetchCompanies = fetch('/api/v1/companies', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((res) => {
+        if (!res.ok) return []
+        return res.json()
+      })
+      .then((data: CompanyWorkedItem[]) => {
+        if (isMounted && Array.isArray(data)) {
+          setCompanies(data)
+        }
+      })
+      .catch(() => {
+        // Non-blocking error for company dropdown
+      })
+
+    Promise.all([fetchLogs, fetchCompanies])
+      .catch((err) => {
+        if (isMounted) {
+          const msg =
+            err instanceof Error ? err.message : 'Error fetching experience data'
+          toast.error(msg, 'Network Error')
+        }
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false)
+      })
+
+    return () => {
+      isMounted = false
     }
+  }, [isOpen, token, onExperienceLogsChange, toast])
 
-    const newItem: ExperienceItem = {
-      id: `exp-${Date.now()}`,
-      company,
-      role,
-      period,
-      location,
-      description: description || 'Responsible for architecting scalable cloud systems.',
-      bullets: [
-        'Optimized critical workflow performance and reduced system latency.',
-        'Mentored engineering teams and established architectural standards.',
-      ],
-      metricsCount: 2,
-      skills: ['TypeScript', 'Cloud Infra', 'React'],
-      isCurrent: period.toLowerCase().includes('present'),
-    }
-
-    onAddExperience(newItem)
-    setCompany('')
-    setRole('')
+  // Reset form
+  const handleResetForm = () => {
+    setEditingId(null)
+    setSelectedCompany('')
+    setCustomCompany('')
     setDescription('')
     setShowDrawer(false)
   }
 
-  const displayedList =
-    filter === 'all'
-      ? experiences
-      : experiences.filter((e) => !e.isCurrent || e.period.includes('Jan 2019'))
+  // Populate form to edit an existing log
+  const handleStartEdit = (log: ExperienceLogItem) => {
+    setEditingId(log.id)
+    const hasCompany = companies.some((c) => c.company_name === log.company_name)
+    if (hasCompany) {
+      setSelectedCompany(log.company_name)
+      setCustomCompany('')
+    } else {
+      setSelectedCompany('__custom__')
+      setCustomCompany(log.company_name)
+    }
+    setDescription(log.description)
+    setShowDrawer(true)
+  }
+
+  // Save (Create or Update) Experience Log
+  const handleSaveForm = async () => {
+    const finalCompanyName =
+      selectedCompany === '__custom__'
+        ? customCompany.trim()
+        : selectedCompany.trim() || customCompany.trim()
+
+    if (!finalCompanyName) {
+      toast.error('Please select or enter a company name', 'Validation Error')
+      return
+    }
+
+    if (!description.trim()) {
+      toast.error('Please provide a description of the experience', 'Validation Error')
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      if (editingId !== null) {
+        // Update existing entry
+        const res = await fetch(`/api/v1/experience-logs/${editingId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            company_name: finalCompanyName,
+            description: description.trim(),
+          }),
+        })
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}))
+          throw new Error(errData.detail || 'Failed to update experience log')
+        }
+
+        const updatedItem: ExperienceLogItem = await res.json()
+        const updatedList = experienceLogs.map((l) =>
+          l.id === editingId ? updatedItem : l
+        )
+        setExperienceLogs(updatedList)
+        if (onExperienceLogsChange) onExperienceLogsChange(updatedList)
+        toast.success(`Updated experience at ${finalCompanyName}`, 'Experience Updated')
+      } else {
+        // Create new entry
+        const res = await fetch('/api/v1/experience-logs', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            company_name: finalCompanyName,
+            description: description.trim(),
+          }),
+        })
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}))
+          throw new Error(errData.detail || 'Failed to create experience log')
+        }
+
+        const createdItem: ExperienceLogItem = await res.json()
+        const updatedList = [createdItem, ...experienceLogs]
+        setExperienceLogs(updatedList)
+        if (onExperienceLogsChange) onExperienceLogsChange(updatedList)
+        toast.success(`Logged experience at ${finalCompanyName}`, 'Experience Created')
+      }
+
+      handleResetForm()
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Could not save experience'
+      toast.error(msg, 'Save Error')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // Delete Experience Log
+  const handleDelete = async (id: number, companyName: string) => {
+    setDeletingId(id)
+    try {
+      const res = await fetch(`/api/v1/experience-logs/${id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!res.ok && res.status !== 204) {
+        throw new Error('Failed to delete experience log')
+      }
+
+      const updatedList = experienceLogs.filter((l) => l.id !== id)
+      setExperienceLogs(updatedList)
+      if (onExperienceLogsChange) onExperienceLogsChange(updatedList)
+      toast.success(`Removed experience at ${companyName}`, 'Experience Deleted')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Could not delete experience log'
+      toast.error(msg, 'Delete Error')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  // Filtered List
+  const displayedList = useMemo(() => {
+    if (!searchQuery.trim()) return experienceLogs
+    const q = searchQuery.trim().toLowerCase()
+    return experienceLogs.filter(
+      (log) =>
+        log.company_name.toLowerCase().includes(q) ||
+        log.description.toLowerCase().includes(q)
+    )
+  }, [experienceLogs, searchQuery])
+
+  if (!isOpen) return null
 
   return (
     <div className="modal-backdrop" onClick={onClose} role="dialog" aria-modal="true">
@@ -78,7 +262,7 @@ export default function ExperienceModal({
               <div className="modal-headline-row">
                 <h3 className="modal-title">Experience Log</h3>
                 <span className="pill-badge primary">
-                  {experiences.length} Logged Roles
+                  {experienceLogs.length} Logged Entries
                 </span>
               </div>
               <p className="modal-subtitle">
@@ -96,38 +280,49 @@ export default function ExperienceModal({
           </button>
         </div>
 
-        {/* Filter & Action Bar */}
+        {/* Filter & Action Toolbar */}
         <div className="modal-toolbar">
           <div className="filter-group">
-            <span className="filter-label">Filter:</span>
-            <button
-              type="button"
-              className={`filter-pill ${filter === 'all' ? 'active' : ''}`}
-              onClick={() => setFilter('all')}
-            >
-              All Experiences ({experiences.length})
-            </button>
-            <button
-              type="button"
-              className={`filter-pill ${filter === 'fulltime' ? 'active' : ''}`}
-              onClick={() => setFilter('fulltime')}
-            >
-              Full-Time
-            </button>
+            <div className="input-with-icon" style={{ minWidth: '260px' }}>
+              <span className="material-symbols-outlined input-leading-icon">search</span>
+              <input
+                type="text"
+                className="compact-input"
+                placeholder="Search by company or keyword..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            {searchQuery && (
+              <button
+                type="button"
+                className="btn-secondary"
+                style={{ padding: '6px 12px', fontSize: '12px' }}
+                onClick={() => setSearchQuery('')}
+              >
+                Clear
+              </button>
+            )}
           </div>
           <button
             type="button"
             className="action-btn-primary"
-            onClick={() => setShowDrawer(!showDrawer)}
+            onClick={() => {
+              if (showDrawer) {
+                handleResetForm()
+              } else {
+                setShowDrawer(true)
+              }
+            }}
           >
             <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
-              {showDrawer ? 'remove' : 'add'}
+              {showDrawer ? 'close' : 'add'}
             </span>
-            <span>{showDrawer ? 'Hide Form' : 'Log New Experience'}</span>
+            <span>{showDrawer ? 'Cancel' : 'Log New Experience'}</span>
           </button>
         </div>
 
-        {/* Add/Edit Drawer */}
+        {/* Add/Edit Drawer Form */}
         {showDrawer && (
           <div className="drawer-panel">
             <div className="drawer-header">
@@ -135,85 +330,72 @@ export default function ExperienceModal({
                 <span className="material-symbols-outlined" style={{ color: 'var(--primary)' }}>
                   edit_document
                 </span>
-                <h4>Log New Experience</h4>
+                <h4>{editingId !== null ? 'Edit Experience Log' : 'Log New Experience'}</h4>
               </div>
               <span className="drawer-subtitle">Auto-syncs to ATS Engine</span>
             </div>
 
-            <div className="grid-two-cols">
-              <div className="form-group-compact">
-                <label className="compact-label">Company Name *</label>
-                <div className="input-with-icon">
-                  <span className="material-symbols-outlined input-leading-icon">apartment</span>
-                  <input
-                    type="text"
-                    className="compact-input"
-                    placeholder="e.g. Netflix, Airbnb, Stripe..."
-                    value={company}
-                    onChange={(e) => setCompany(e.target.value)}
-                  />
-                </div>
+            {/* Company Selection Dropdown */}
+            <div className="form-group-compact">
+              <label className="compact-label">Company Name *</label>
+              <div className="input-with-icon">
+                <span className="material-symbols-outlined input-leading-icon">apartment</span>
+                <select
+                  className="compact-select"
+                  value={selectedCompany}
+                  onChange={(e) => {
+                    setSelectedCompany(e.target.value)
+                    if (e.target.value !== '__custom__') {
+                      setCustomCompany('')
+                    }
+                  }}
+                >
+                  <option value="">Select a company...</option>
+                  {companies.map((c) => (
+                    <option key={c.id} value={c.company_name}>
+                      {c.company_name} {c.actively_working ? '(Current Employer)' : ''}
+                    </option>
+                  ))}
+                  <option value="__custom__">+ Enter another company...</option>
+                </select>
               </div>
 
-              <div className="form-group-compact">
-                <label className="compact-label">Role / Title *</label>
-                <div className="input-with-icon">
-                  <span className="material-symbols-outlined input-leading-icon">badge</span>
+              {/* Text input if custom selected or no companies available */}
+              {(selectedCompany === '__custom__' ||
+                (companies.length === 0 && selectedCompany === '')) && (
+                <div className="input-with-icon" style={{ marginTop: '8px' }}>
+                  <span className="material-symbols-outlined input-leading-icon">business</span>
                   <input
                     type="text"
                     className="compact-input"
-                    placeholder="e.g. Staff Software Engineer"
-                    value={role}
-                    onChange={(e) => setRole(e.target.value)}
+                    placeholder="Enter company name..."
+                    value={customCompany}
+                    onChange={(e) => setCustomCompany(e.target.value)}
                   />
                 </div>
-              </div>
+              )}
+              {companies.length === 0 && (
+                <p className="hint-text">
+                  Tip: Add your employers in Career Settings to auto-populate this dropdown.
+                </p>
+              )}
             </div>
 
-            <div className="grid-two-cols" style={{ marginTop: '12px' }}>
-              <div className="form-group-compact">
-                <label className="compact-label">Employment Period *</label>
-                <div className="input-with-icon">
-                  <span className="material-symbols-outlined input-leading-icon">calendar_today</span>
-                  <input
-                    type="text"
-                    className="compact-input"
-                    placeholder="e.g. Jan 2022 – Present"
-                    value={period}
-                    onChange={(e) => setPeriod(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="form-group-compact">
-                <label className="compact-label">Location &amp; Type</label>
-                <div className="input-with-icon">
-                  <span className="material-symbols-outlined input-leading-icon">location_on</span>
-                  <input
-                    type="text"
-                    className="compact-input"
-                    placeholder="e.g. San Francisco, CA (Remote)"
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-
+            {/* Description Textarea */}
             <div className="form-group-compact" style={{ marginTop: '12px' }}>
               <div className="flex-between">
-                <label className="compact-label">Experience &amp; Impact Description *</label>
-                <span className="highlight-tag">Metric Amplification Active</span>
+                <label className="compact-label">Description of Experience *</label>
+                <span className="highlight-tag">Impact &amp; Accomplishments</span>
               </div>
               <textarea
                 className="compact-textarea"
-                rows={3}
-                placeholder="Describe your responsibilities, projects launched, quantifiable impact, and technologies used (e.g. Scaled payments pipeline by 35%, processed $1.2B volume with 99.99% SLA)..."
+                rows={4}
+                placeholder="Describe what you worked on, projects launched, quantifiable impact, and technical accomplishments..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
               <p className="hint-text">
-                Pro-tip: Include raw metrics ($ revenue, % latency, team count) to automatically score higher in ATS tailoring.
+                Include measurable outcomes and technical details to power ATS resume tailoring.
               </p>
             </div>
 
@@ -221,7 +403,8 @@ export default function ExperienceModal({
               <button
                 type="button"
                 className="btn-secondary"
-                onClick={() => setShowDrawer(false)}
+                onClick={handleResetForm}
+                disabled={isSubmitting}
               >
                 Cancel
               </button>
@@ -229,99 +412,154 @@ export default function ExperienceModal({
                 type="button"
                 className="action-btn-primary"
                 onClick={handleSaveForm}
+                disabled={isSubmitting}
               >
-                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>save</span>
-                <span>Save Experience</span>
+                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
+                  {isSubmitting ? 'hourglass_top' : 'save'}
+                </span>
+                <span>
+                  {isSubmitting
+                    ? 'Saving...'
+                    : editingId !== null
+                    ? 'Update Experience'
+                    : 'Save Experience'}
+                </span>
               </button>
             </div>
           </div>
         )}
 
         {/* Experience Records List */}
-        <div className="records-list">
-          {displayedList.map((item) => (
-            <div key={item.id} className="record-card">
-              <div className="record-header">
-                <div className="record-title-row">
-                  <div className="company-avatar">
-                    {item.company.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <div className="company-name-row">
-                      <span className="company-name">{item.company}</span>
-                      {item.isCurrent && (
-                        <span className="badge-status-active">
-                          <span className="pulse-indicator"></span>
-                          Current Role
-                        </span>
-                      )}
-                      <span className="badge-period">{item.period}</span>
+        {isLoading ? (
+          <div className="empty-pipeline-state" style={{ padding: '40px 20px' }}>
+            <span
+              className="material-symbols-outlined empty-icon spin-indicator"
+              style={{ animation: 'spin 1.5s linear infinite' }}
+            >
+              refresh
+            </span>
+            <span>Loading experience logs...</span>
+          </div>
+        ) : displayedList.length === 0 ? (
+          <div className="empty-pipeline-state" style={{ padding: '40px 20px' }}>
+            <span className="material-symbols-outlined empty-icon">work_history</span>
+            <span style={{ fontWeight: 600, color: 'var(--on-surface)' }}>
+              {searchQuery ? 'No matching experience entries' : 'No experience logs recorded yet'}
+            </span>
+            <span
+              style={{
+                fontSize: '13px',
+                color: 'var(--on-surface-variant)',
+                marginTop: '4px',
+              }}
+            >
+              {searchQuery
+                ? `No experience entries match "${searchQuery}".`
+                : 'Log your accomplishments at work to power ATS-friendly tailored resumes.'}
+            </span>
+            {!showDrawer && !searchQuery && (
+              <button
+                type="button"
+                className="action-btn-primary"
+                style={{ marginTop: '16px' }}
+                onClick={() => setShowDrawer(true)}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                  add
+                </span>
+                <span>Log First Experience</span>
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="records-list">
+            {displayedList.map((item) => (
+              <div key={item.id} className="record-card">
+                <div className="record-header">
+                  <div className="record-title-row">
+                    <div className="company-avatar">
+                      {item.company_name.charAt(0).toUpperCase()}
                     </div>
-                    <div className="role-title-highlight">{item.role}</div>
+                    <div>
+                      <div className="company-name-row">
+                        <span className="company-name">{item.company_name}</span>
+                        <span className="badge-period">
+                          {new Date(item.created_at).toLocaleDateString(undefined, {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="record-actions">
+                    <button
+                      type="button"
+                      className="action-icon-btn"
+                      onClick={() => handleStartEdit(item)}
+                      title="Edit Experience"
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                        edit
+                      </span>
+                      <span>Edit</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="action-icon-btn error"
+                      onClick={() => handleDelete(item.id, item.company_name)}
+                      disabled={deletingId === item.id}
+                      title="Remove Experience"
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                        delete
+                      </span>
+                      <span>{deletingId === item.id ? 'Deleting...' : 'Remove'}</span>
+                    </button>
                   </div>
                 </div>
 
-                <div className="record-actions">
-                  <button
-                    type="button"
-                    className="action-icon-btn error"
-                    onClick={() => onRemoveExperience(item.id)}
-                    title="Remove Experience"
-                  >
-                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>delete</span>
-                    <span>Remove</span>
-                  </button>
+                <div className="record-body">
+                  <p className="record-desc" style={{ whiteSpace: 'pre-wrap' }}>
+                    {item.description}
+                  </p>
                 </div>
-              </div>
 
-              <div className="record-body">
-                <p className="record-desc">{item.description}</p>
-                {item.bullets.length > 0 && (
-                  <ul className="record-bullets">
-                    {item.bullets.map((b, idx) => (
-                      <li key={idx}>{b}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              <div className="record-footer">
-                <div className="record-meta">
-                  <span className="meta-verified">
-                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>verified</span>
-                    Logged &amp; Verified
-                  </span>
-                  <span>•</span>
-                  <span>{item.metricsCount} Impact Metrics Detected</span>
-                </div>
-                <div className="tag-cluster">
-                  {item.skills.map((skill, sIdx) => (
-                    <span key={sIdx} className="mini-tag">
-                      {skill}
+                <div className="record-footer">
+                  <div className="record-meta">
+                    <span className="meta-verified">
+                      <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
+                        verified
+                      </span>
+                      Logged &amp; Synced
                     </span>
-                  ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* Modal Footer */}
         <div className="modal-footer">
           <button
             type="button"
             className="action-btn-outline"
-            onClick={() => setShowDrawer(true)}
+            onClick={() => {
+              handleResetForm()
+              setShowDrawer(true)
+            }}
           >
-            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add_circle</span>
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+              add_circle
+            </span>
             <span>Log Another Experience</span>
           </button>
           <div className="modal-footer-btns">
-            <button type="button" className="btn-secondary" onClick={onClose}>
-              Done
-            </button>
             <button type="button" className="action-btn-primary" onClick={onClose}>
-              Save &amp; Apply
+              Done
             </button>
           </div>
         </div>

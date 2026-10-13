@@ -229,9 +229,21 @@ export interface JobPipelineSummary {
   offer: number
 }
 
+export interface ExperienceLogItem {
+  id: number
+  user_id: number
+  company_name: string
+  description: string
+  created_at: string
+  updated_at: string
+}
 
+export interface ExperienceLogCreateInput {
+  company_name: string
+  description: string
+}
 
-
-
-
-
+export interface ExperienceLogUpdateInput {
+  company_name?: string
+  description?: string
+}
