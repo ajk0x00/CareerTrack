@@ -15,6 +15,12 @@ from app.schemas.company import (
     CompanyWorkedResponse,
     CompanyWorkedUpdate,
 )
+from app.schemas.experience_log import (
+    ExperienceLogBase,
+    ExperienceLogCreate,
+    ExperienceLogResponse,
+    ExperienceLogUpdate,
+)
 from app.schemas.job import (
     JobBase,
     JobCreate,
@@ -60,6 +66,10 @@ __all__ = [
     "CompanyWorkedCreate",
     "CompanyWorkedResponse",
     "CompanyWorkedUpdate",
+    "ExperienceLogBase",
+    "ExperienceLogCreate",
+    "ExperienceLogResponse",
+    "ExperienceLogUpdate",
     "JobBase",
     "JobCreate",
     "JobPipelineSummary",

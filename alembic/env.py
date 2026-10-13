@@ -25,6 +25,16 @@ target_metadata = Base.metadata
 settings = get_settings()
 
 
+# Supplementary tables managed outside core models (e.g. legacy import tables)
+IGNORED_TABLES = {"work_logs", "tags", "log_tags"}
+
+
+def include_object(object: object, name: str | None, type_: str, reflected: bool, compare_to: object) -> bool:
+    if type_ == "table" and name in IGNORED_TABLES:
+        return False
+    return True
+
+
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
 
@@ -37,6 +47,7 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         compare_type=True,
+        include_object=include_object,
     )
 
     with context.begin_transaction():
@@ -48,6 +59,7 @@ def do_run_migrations(connection: Connection) -> None:
         connection=connection,
         target_metadata=target_metadata,
         compare_type=True,
+        include_object=include_object,
     )
 
     with context.begin_transaction():
