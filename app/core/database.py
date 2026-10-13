@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.orm import DeclarativeBase
 
-from app.core.config import get_settings
+from app.core.config import get_settings, normalize_database_url
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ settings = get_settings()
 
 # Engine configuration with connection pooling and pre-ping
 engine = create_async_engine(
-    settings.SQLALCHEMY_DATABASE_URI,
+    normalize_database_url(str(settings.SQLALCHEMY_DATABASE_URI)),
     echo=settings.DB_ECHO,
     pool_pre_ping=True,
     pool_size=settings.DB_POOL_SIZE,

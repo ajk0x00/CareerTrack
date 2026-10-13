@@ -5,9 +5,10 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.types import Receive, Scope, Send
 
 from app.api.v1.router import api_router
 from app.core.config import get_settings
@@ -32,6 +33,19 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     logger.info("Shutting down %s", settings.PROJECT_NAME)
     await close_db_connection()
+
+
+class HealthCheckBypassTrustedHostMiddleware(TrustedHostMiddleware):
+    """Allows operational probes (/healthz) regardless of the Host header,
+
+    while strictly validating host headers for all other routes.
+    """
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http" and scope.get("path", "").rstrip("/") == "/healthz":
+            await self.app(scope, receive, send)
+            return
+        await super().__call__(scope, receive, send)
 
 
 def create_app() -> FastAPI:
@@ -65,9 +79,13 @@ def create_app() -> FastAPI:
 
     # Security: Allowed Hosts (enforced when not wildcard)
     if settings.ALLOWED_HOSTS and settings.ALLOWED_HOSTS != ["*"]:
+        allowed_hosts = list(settings.ALLOWED_HOSTS)
+        for local_host in ("localhost", "127.0.0.1"):
+            if local_host not in allowed_hosts:
+                allowed_hosts.append(local_host)
         app.add_middleware(
-            TrustedHostMiddleware,
-            allowed_hosts=settings.ALLOWED_HOSTS,
+            HealthCheckBypassTrustedHostMiddleware,
+            allowed_hosts=allowed_hosts,
         )
 
     # Operational Health Check (Liveness & Readiness probe)
