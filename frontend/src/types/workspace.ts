@@ -137,6 +137,99 @@ export interface ApiClientCreateResponse extends ApiClientItem {
   client_secret: string
 }
 
+export type JobStatus = 'saved' | 'applied' | 'interviewing' | 'offer'
+
+export interface JobItem {
+  id: number
+  user_id: number
+  title: string
+  company_name: string
+  job_url?: string | null
+  location?: string | null
+  workplace_type?: 'remote' | 'hybrid' | 'on_site' | null
+  employment_type?: EmploymentType | null
+  department?: string | null
+  description?: string | null
+  requirements?: string | null
+  salary_min?: number | null
+  salary_max?: number | null
+  salary_currency?: string | null
+  salary_interval?: 'yearly' | 'monthly' | 'hourly' | null
+  posted_date?: string | null
+  deadline_date?: string | null
+  status: JobStatus
+  current_stage?: string | null
+  applied_date?: string | null
+  excitement_rating?: number | null
+  notes?: string | null
+  contact_name?: string | null
+  contact_email?: string | null
+  contact_phone?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface JobCreateInput {
+  title: string
+  company_name: string
+  job_url?: string | null
+  location?: string | null
+  workplace_type?: 'remote' | 'hybrid' | 'on_site' | null
+  employment_type?: EmploymentType | null
+  department?: string | null
+  description?: string | null
+  requirements?: string | null
+  salary_min?: number | null
+  salary_max?: number | null
+  salary_currency?: string | null
+  salary_interval?: 'yearly' | 'monthly' | 'hourly' | null
+  posted_date?: string | null
+  deadline_date?: string | null
+  status?: JobStatus
+  current_stage?: string | null
+  applied_date?: string | null
+  excitement_rating?: number | null
+  notes?: string | null
+  contact_name?: string | null
+  contact_email?: string | null
+  contact_phone?: string | null
+}
+
+export interface JobUpdateInput {
+  title?: string
+  company_name?: string
+  job_url?: string | null
+  location?: string | null
+  workplace_type?: 'remote' | 'hybrid' | 'on_site' | null
+  employment_type?: EmploymentType | null
+  department?: string | null
+  description?: string | null
+  requirements?: string | null
+  salary_min?: number | null
+  salary_max?: number | null
+  salary_currency?: string | null
+  salary_interval?: 'yearly' | 'monthly' | 'hourly' | null
+  posted_date?: string | null
+  deadline_date?: string | null
+  status?: JobStatus
+  current_stage?: string | null
+  applied_date?: string | null
+  excitement_rating?: number | null
+  notes?: string | null
+  contact_name?: string | null
+  contact_email?: string | null
+  contact_phone?: string | null
+}
+
+export interface JobPipelineSummary {
+  total: number
+  saved: number
+  applied: number
+  interviewing: number
+  offer: number
+}
+
+
 
 
 

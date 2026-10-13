@@ -6,7 +6,7 @@ import Footer from '../Footer'
 import SettingsModal from './SettingsModal'
 import ExperienceModal from './ExperienceModal'
 import SkillsModal from './SkillsModal'
-import type { ExperienceItem, UserPreferences } from '../../types/workspace'
+import type { ExperienceItem, JobStatus, UserPreferences } from '../../types/workspace'
 
 interface PipelineJob {
   id: string
@@ -14,7 +14,7 @@ interface PipelineJob {
   role: string
   location: string
   comp: string
-  stage: 'saved' | 'applied' | 'interviewing' | 'offer'
+  stage: JobStatus
   matchScore: number
   appliedDate?: string
   notes?: string
