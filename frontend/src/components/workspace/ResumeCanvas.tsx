@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { ExperienceItem, SkillCategory } from '../../types/workspace'
 import RenderedResume from './RenderedResume'
 import MarkdownEditor from './MarkdownEditor'
+import ResumeUploadModal from './ResumeUploadModal'
 
 interface ResumeCanvasProps {
   userName: string
@@ -27,6 +28,7 @@ export default function ResumeCanvas({
   highlightFlash,
 }: ResumeCanvasProps) {
   const [activeTab, setActiveTab] = useState<'rendered' | 'markdown'>('rendered')
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false)
 
   const handleExportPDF = () => {
     window.print()
@@ -64,23 +66,37 @@ export default function ResumeCanvas({
               type="button"
               className={`segment-btn ${activeTab === 'rendered' ? 'active' : ''}`}
               onClick={() => setActiveTab('rendered')}
+              title="Rendered Preview"
+              aria-label="Rendered Preview"
             >
               <span className="material-symbols-outlined segment-icon">visibility</span>
-              <span>Rendered Preview</span>
             </button>
 
             <button
               type="button"
               className={`segment-btn ${activeTab === 'markdown' ? 'active' : ''}`}
               onClick={() => setActiveTab('markdown')}
+              title="Edit Raw Markdown"
+              aria-label="Edit Raw Markdown"
             >
               <span className="material-symbols-outlined segment-icon">code</span>
-              <span>Edit Raw Markdown</span>
             </button>
           </div>
 
           {/* Action Buttons */}
           <div className="canvas-buttons-group">
+            <button
+              type="button"
+              className="btn-canvas-secondary"
+              onClick={() => setIsUploadModalOpen(true)}
+              title="Upload and Extract Resume with AI"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                upload_file
+              </span>
+              <span className="hide-mobile">Upload Resume</span>
+            </button>
+
             <button
               type="button"
               className="icon-action-btn"
@@ -163,6 +179,15 @@ export default function ResumeCanvas({
           )}
         </div>
       </div>
+
+      {/* Resume Upload & AI Extraction Modal */}
+      <ResumeUploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onImportSuccess={(_result, markdown) => {
+          onMarkdownChange(markdown)
+        }}
+      />
     </section>
   )
 }
