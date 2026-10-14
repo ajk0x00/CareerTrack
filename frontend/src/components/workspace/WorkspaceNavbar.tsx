@@ -5,8 +5,8 @@ import UserMenu from './UserMenu'
 
 interface WorkspaceNavbarProps {
   user: User
-  currentWorkspace: string
-  onSelectWorkspace: (name: string) => void
+  currentWorkspace?: string
+  onSelectWorkspace?: (name: string) => void
   onOpenExperience: () => void
   onOpenSkills: () => void
   onOpenSettings: () => void
@@ -60,10 +60,16 @@ export default function WorkspaceNavbar({
               Workspace
             </span>
             <span className="material-symbols-outlined ws-crumb-arrow">chevron_right</span>
-            <WorkspaceSwitcher
-              currentWorkspace={currentWorkspace}
-              onSelectWorkspace={onSelectWorkspace}
-            />
+            {isPipeline ? (
+              <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--on-surface)', padding: '4px 8px' }}>
+                Job Application Pipeline
+              </span>
+            ) : (
+              <WorkspaceSwitcher
+                currentWorkspace={currentWorkspace || 'Tailored Resume Generator'}
+                onSelectWorkspace={onSelectWorkspace || (() => {})}
+              />
+            )}
             <span className="ws-active-indicator">
               <span className="ws-pulse-dot"></span>
               Active

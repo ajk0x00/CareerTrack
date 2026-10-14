@@ -3,13 +3,13 @@ import type { WorkspaceItem } from '../../types/workspace'
 import { useToast } from '../ToastContext'
 
 interface WorkspaceSwitcherProps {
-  currentWorkspace: string
-  onSelectWorkspace: (name: string) => void
+  currentWorkspace?: string
+  onSelectWorkspace?: (name: string) => void
   token?: string
 }
 
 export default function WorkspaceSwitcher({
-  currentWorkspace,
+  currentWorkspace = 'Tailored Resume Generator',
   onSelectWorkspace,
   token: propToken,
 }: WorkspaceSwitcherProps) {
@@ -75,7 +75,7 @@ export default function WorkspaceSwitcher({
               const created: WorkspaceItem = await createRes.json()
               if (isMounted) {
                 setWorkspaces([created])
-                onSelectWorkspace(created.name)
+                onSelectWorkspace?.(created.name)
               }
             }
           } catch {
@@ -86,7 +86,7 @@ export default function WorkspaceSwitcher({
           // If currentWorkspace doesn't match any backend workspace, select the first
           const exists = data.some((w) => w.name === currentWorkspace)
           if (!exists && data[0]) {
-            onSelectWorkspace(data[0].name)
+            onSelectWorkspace?.(data[0].name)
           }
         }
       })
@@ -154,7 +154,7 @@ export default function WorkspaceSwitcher({
     }
 
     if (!activeWorkspace) {
-      onSelectWorkspace(trimmed)
+      onSelectWorkspace?.(trimmed)
       setIsRenaming(false)
       return
     }
@@ -183,7 +183,7 @@ export default function WorkspaceSwitcher({
       setWorkspaces((prev) =>
         prev.map((w) => (w.id === updated.id ? updated : w))
       )
-      onSelectWorkspace(updated.name)
+      onSelectWorkspace?.(updated.name)
       setIsRenaming(false)
       toast.success(`Workspace renamed to "${updated.name}"`, 'Renamed')
     } catch (err) {
@@ -221,7 +221,7 @@ export default function WorkspaceSwitcher({
 
       const created: WorkspaceItem = await res.json()
       setWorkspaces((prev) => [...prev, created])
-      onSelectWorkspace(created.name)
+      onSelectWorkspace?.(created.name)
       setNewWsTitle('')
       setIsCreatingInline(false)
       setIsOpen(false)
@@ -259,7 +259,7 @@ export default function WorkspaceSwitcher({
       setWorkspaces(updated)
 
       if (currentWorkspace.toLowerCase() === name.toLowerCase() && updated[0]) {
-        onSelectWorkspace(updated[0].name)
+        onSelectWorkspace?.(updated[0].name)
       }
 
       toast.success(`"${name}" deleted`, 'Workspace Removed')
@@ -408,7 +408,7 @@ export default function WorkspaceSwitcher({
                                     setWorkspaces((prev) =>
                                       prev.map((w) => (w.id === ws.id ? updated : w))
                                     )
-                                    if (isSelected) onSelectWorkspace(updated.name)
+                                    if (isSelected) onSelectWorkspace?.(updated.name)
                                     setEditingItemWsId(null)
                                     toast.success('Workspace updated', 'Renamed')
                                   }
@@ -440,7 +440,7 @@ export default function WorkspaceSwitcher({
                         type="button"
                         className={`ws-item-btn ${isSelected ? 'selected' : ''}`}
                         onClick={() => {
-                          onSelectWorkspace(ws.name)
+                          onSelectWorkspace?.(ws.name)
                           setIsOpen(false)
                         }}
                       >

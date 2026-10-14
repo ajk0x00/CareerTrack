@@ -4739,6 +4739,88 @@ body {
   border: 1px solid;
 }
 
+.pipeline-col-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pipeline-col-add-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1px dashed var(--outline-variant);
+  background: transparent;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pipeline-col-add-btn:hover {
+  background: var(--surface-container-high);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.pipeline-add-stage-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-lowest);
+  color: var(--on-surface);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pipeline-add-stage-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: rgba(70, 72, 212, 0.06);
+}
+
+.pipeline-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pipeline-hero-empty {
+  padding: 50px 24px;
+  text-align: center;
+  background: var(--surface-container-lowest);
+  border-radius: 14px;
+  border: 1px dashed var(--outline-variant);
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.pipeline-hero-empty h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--on-surface);
+  margin: 0;
+}
+
+.pipeline-hero-empty p {
+  font-size: 13px;
+  color: var(--on-surface-variant);
+  max-width: 480px;
+  margin: 0;
+  line-height: 1.5;
+}
+
 .pipeline-card-list {
   display: flex;
   flex-direction: column;
