@@ -34,7 +34,7 @@ def register_resources(server: MCPServer) -> None:
     @server.resource(
         "careertrack://profile",
         name="User Profile",
-        description="Basic user profile information including name, email, phone, and socials.",
+        description="Public user profile details including name, address, and socials (omits email and phone).",
         mime_type="application/json",
     )
     async def get_profile_resource() -> str:
@@ -47,10 +47,8 @@ def register_resources(server: MCPServer) -> None:
             data = {
                 "id": user.id,
                 "name": user.name,
-                "email": user.email,
-                "phone": user.phone,
-                "address": user.address,
-                "socials": user.socials,
+                "address": user.address or {},
+                "socials": user.socials or {},
             }
             return json.dumps(data, indent=2)
 
@@ -346,10 +344,8 @@ def register_resources(server: MCPServer) -> None:
                 "profile": {
                     "id": user.id,
                     "name": user.name,
-                    "email": user.email,
-                    "phone": user.phone,
-                    "address": user.address,
-                    "socials": user.socials,
+                    "address": user.address or {},
+                    "socials": user.socials or {},
                 },
                 "total_work_experience": exp_summary["total_experience"],
                 "active_roles": exp_summary["active_positions"],

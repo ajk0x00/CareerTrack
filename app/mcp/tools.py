@@ -1,6 +1,7 @@
 """MCP tools definitions for CareerTrack.
 
 Exposes tools for:
+- User profile details omitting private email and phone (get_profile)
 - Technical and soft skills (get_skills)
 - Career preferences and priorities (get_preferences)
 - Work experience timeline and accomplishments (get_work_experience)
@@ -27,6 +28,28 @@ from app.models.skill import Skill, SkillProficiency
 
 def register_tools(server: MCPServer) -> None:
     """Registers CareerTrack tools onto the provided MCPServer instance."""
+
+    # -------------------------------------------------------------------------
+    # Profile Tools
+    # -------------------------------------------------------------------------
+
+    @server.tool(
+        name="get_profile",
+        description="Retrieve the authenticated user's public profile details (name, location/address, and social profiles), omitting private contact information (email and phone).",
+    )
+    async def get_profile(
+        auth_token: str | None = None,
+        ctx: Context | None = None,
+    ) -> dict[str, Any]:
+        async with async_session_factory() as db:
+            user = await resolve_user(db, auth_token=auth_token, ctx=ctx)
+
+            return {
+                "id": user.id,
+                "name": user.name,
+                "address": user.address or {},
+                "socials": user.socials or {},
+            }
 
     # -------------------------------------------------------------------------
     # Skills Tools
