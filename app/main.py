@@ -26,6 +26,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     logger.info("Starting %s in %s mode", settings.PROJECT_NAME, settings.ENVIRONMENT)
 
+    if settings.LANGCHAIN_TRACING_V2 and settings.LANGCHAIN_API_KEY:
+        import os
+        os.environ["LANGCHAIN_TRACING_V2"] = "true"
+        os.environ["LANGCHAIN_API_KEY"] = settings.LANGCHAIN_API_KEY
+        os.environ["LANGCHAIN_PROJECT"] = settings.LANGCHAIN_PROJECT
+        os.environ["LANGCHAIN_ENDPOINT"] = settings.LANGCHAIN_ENDPOINT
+        logger.info("LangSmith observability enabled for project %s", settings.LANGCHAIN_PROJECT)
+
     from app.mcp.server import mcp_lifespan
 
     async with mcp_lifespan():

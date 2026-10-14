@@ -50,6 +50,13 @@ from app.schemas.skill import (
     SkillResponse,
     SkillUpdate,
 )
+from app.schemas.resume import (
+    ExtractedCompany,
+    ExtractedSkill,
+    ResumeExtraction,
+    ResumeImportRequest,
+    ResumeImportResponse,
+)
 from app.schemas.workspace import (
     WorkspaceBase,
     WorkspaceCreate,
@@ -70,6 +77,11 @@ __all__ = [
     "ExperienceLogCreate",
     "ExperienceLogResponse",
     "ExperienceLogUpdate",
+    "ExtractedCompany",
+    "ExtractedSkill",
+    "ResumeExtraction",
+    "ResumeImportRequest",
+    "ResumeImportResponse",
     "JobBase",
     "JobCreate",
     "JobPipelineSummary",

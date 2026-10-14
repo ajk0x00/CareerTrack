@@ -94,6 +94,18 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
 
+    # LLM Settings
+    LLM_API_KEY: str = ""
+    LLM_BASE_URL: str = "https://api.fireworks.ai/inference/v1"
+    LLM_MODEL: str = "accounts/fireworks/models/glm-5p3"
+    LLM_TEMPERATURE: float = 0.1
+
+    # LangSmith Observability
+    LANGCHAIN_TRACING_V2: bool = False
+    LANGCHAIN_API_KEY: str = ""
+    LANGCHAIN_PROJECT: str = "careertrack"
+    LANGCHAIN_ENDPOINT: str = "https://api.smith.langchain.com"
+
     @computed_field
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:

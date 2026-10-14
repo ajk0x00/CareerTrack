@@ -10,6 +10,7 @@ from app.api.v1.endpoints import (
     jobs,
     preferences,
     profile,
+    resume,
     skills,
     workspaces,
 )
@@ -23,6 +24,7 @@ api_router.include_router(experience_logs.router, prefix="/experience-logs", tag
 api_router.include_router(jobs.router, prefix="/jobs", tags=["Jobs"])
 api_router.include_router(preferences.router, prefix="/preferences", tags=["Preferences"])
 api_router.include_router(profile.router, prefix="/profile", tags=["Profile"])
+api_router.include_router(resume.router, prefix="/resume", tags=["Resume"])
 api_router.include_router(skills.router, prefix="/skills", tags=["Skills"])
 api_router.include_router(workspaces.router, prefix="/workspaces", tags=["Workspaces"])
 
