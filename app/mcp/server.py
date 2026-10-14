@@ -41,8 +41,8 @@ def create_mcp_server() -> MCPServer:
         name="careertrack",
         title="CareerTrack MCP Server",
         description=(
-            "Exposes user skills, career preferences, companies worked in, total years of work experience, "
-            "job application pipeline tracking, and unified ATS-friendly career context for AI assistants and resume builders."
+            "Exposes user skills, career preferences, companies worked in, work accomplishments and experience logs, "
+            "total verified years of work experience, job application pipeline tracking, and unified ATS-friendly career context for AI assistants and resume builders."
         ),
         version="0.1.0",
         token_verifier=CareerTrackTokenVerifier(),

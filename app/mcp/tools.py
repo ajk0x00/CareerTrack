@@ -23,6 +23,7 @@ from app.mcp.experience import (
     compute_company_tenure,
 )
 from app.models.company import CompanyWorked, EmploymentType
+from app.models.experience_log import ExperienceLog
 from app.models.job import Job, JobStatus, WorkplaceType
 from app.models.preference import Preference, PreferenceImportance
 from app.models.skill import Skill, SkillProficiency
@@ -138,11 +139,12 @@ def register_tools(server: MCPServer) -> None:
 
     @server.tool(
         name="get_work_experience",
-        description="Retrieve the user's work experience timeline including company names, dates, employment types, and calculated tenures.",
+        description="Retrieve the user's work experience timeline including company names, dates, employment types, calculated tenures, and logged accomplishments.",
     )
     async def get_work_experience(
         actively_working: bool | None = None,
         employment_type: str | None = None,
+        include_logs: bool = True,
         auth_token: str | None = None,
         ctx: Context | None = None,
     ) -> dict[str, Any]:
@@ -166,11 +168,30 @@ def register_tools(server: MCPServer) -> None:
             result = await db.execute(stmt)
             companies = result.scalars().all()
 
+            # Fetch experience logs for user if requested
+            logs_by_company: dict[int, list[dict[str, Any]]] = {}
+            if include_logs and companies:
+                logs_res = await db.execute(
+                    select(ExperienceLog)
+                    .where(ExperienceLog.user_id == user.id)
+                    .order_by(ExperienceLog.created_at.desc())
+                )
+                for log in logs_res.scalars().all():
+                    logs_by_company.setdefault(log.company_id, []).append(
+                        {
+                            "id": log.id,
+                            "description": log.description,
+                            "created_at": log.created_at.isoformat(),
+                            "updated_at": log.updated_at.isoformat(),
+                        }
+                    )
+
             timeline: list[dict[str, Any]] = []
             for c in companies:
                 months, tenure_formatted = compute_company_tenure(
                     c.start_date, c.end_date, c.actively_working
                 )
+                comp_logs = logs_by_company.get(c.id, [])
                 timeline.append(
                     {
                         "id": c.id,
@@ -181,6 +202,8 @@ def register_tools(server: MCPServer) -> None:
                         "actively_working": c.actively_working,
                         "tenure_months": months,
                         "tenure_formatted": tenure_formatted,
+                        "experience_logs": comp_logs,
+                        "total_logs": len(comp_logs),
                     }
                 )
 
@@ -210,6 +233,147 @@ def register_tools(server: MCPServer) -> None:
 
             summary = calculate_experience_summary(list(companies))
             return summary
+
+    @server.tool(
+        name="get_experience_logs",
+        description="Retrieve the user's logged work experiences, project accomplishments, and achievements. Supports filtering by company_name, company_id, or search query.",
+    )
+    async def get_experience_logs(
+        company_name: str | None = None,
+        company_id: int | None = None,
+        q: str | None = None,
+        limit: int = 50,
+        auth_token: str | None = None,
+        ctx: Context | None = None,
+    ) -> dict[str, Any]:
+        async with async_session_factory() as db:
+            user = await resolve_user(db, auth_token=auth_token, ctx=ctx)
+
+            stmt = select(ExperienceLog).where(ExperienceLog.user_id == user.id)
+
+            if company_id is not None:
+                stmt = stmt.where(ExperienceLog.company_id == company_id)
+
+            if company_name and company_name.strip():
+                stmt = stmt.join(CompanyWorked).where(
+                    CompanyWorked.company_name.ilike(f"%{company_name.strip()}%")
+                )
+
+            if q and q.strip():
+                stmt = stmt.where(ExperienceLog.description.ilike(f"%{q.strip()}%"))
+
+            stmt = stmt.order_by(ExperienceLog.created_at.desc()).limit(max(1, min(limit, 200)))
+            result = await db.execute(stmt)
+            logs = result.scalars().all()
+
+            return {
+                "experience_logs": [
+                    {
+                        "id": log.id,
+                        "company_id": log.company_id,
+                        "company_name": log.company_name,
+                        "description": log.description,
+                        "created_at": log.created_at.isoformat(),
+                        "updated_at": log.updated_at.isoformat(),
+                    }
+                    for log in logs
+                ],
+                "total": len(logs),
+            }
+
+    @server.tool(
+        name="add_experience_log",
+        description="Log a new work experience or project accomplishment entry for a company. Matches an existing company by company_name or company_id, or automatically creates the company record if it does not yet exist.",
+    )
+    async def add_experience_log(
+        description: str,
+        company_name: str | None = None,
+        company_id: int | None = None,
+        auth_token: str | None = None,
+        ctx: Context | None = None,
+    ) -> dict[str, Any]:
+        clean_desc = description.strip() if description else ""
+        if not clean_desc:
+            raise ToolError("Experience log description cannot be empty.")
+
+        async with async_session_factory() as db:
+            user = await resolve_user(db, auth_token=auth_token, ctx=ctx)
+
+            target_company: CompanyWorked | None = None
+
+            if company_id is not None:
+                comp_res = await db.execute(
+                    select(CompanyWorked).where(
+                        CompanyWorked.id == company_id,
+                        CompanyWorked.user_id == user.id,
+                    )
+                )
+                target_company = comp_res.scalar_one_or_none()
+                if not target_company:
+                    raise ToolError(f"No company found with ID {company_id} for this user.")
+
+            elif company_name and company_name.strip():
+                clean_name = company_name.strip()
+                comp_res = await db.execute(
+                    select(CompanyWorked).where(
+                        CompanyWorked.user_id == user.id,
+                        CompanyWorked.company_name.ilike(clean_name),
+                    )
+                )
+                target_company = comp_res.scalars().first()
+
+                if not target_company:
+                    # Auto-provision CompanyWorked for the user
+                    target_company = CompanyWorked(
+                        user_id=user.id,
+                        company_name=clean_name,
+                        employment_type=EmploymentType.FULL_TIME.value,
+                        start_date=date.today(),
+                        actively_working=True,
+                    )
+                    db.add(target_company)
+                    await db.flush()
+            else:
+                raise ToolError("Either 'company_name' or 'company_id' must be provided.")
+
+            new_log = ExperienceLog(
+                user_id=user.id,
+                company_id=target_company.id,
+                description=clean_desc,
+            )
+            db.add(new_log)
+            await db.commit()
+            await db.refresh(new_log)
+
+            return {
+                "message": f"Successfully logged experience for {target_company.company_name}",
+                "experience_log": {
+                    "id": new_log.id,
+                    "company_id": new_log.company_id,
+                    "company_name": target_company.company_name,
+                    "description": new_log.description,
+                    "created_at": new_log.created_at.isoformat(),
+                },
+            }
+
+    @server.tool(
+        name="create_experience_log",
+        description="Alias for add_experience_log. Log a new work experience or project accomplishment entry.",
+    )
+    async def create_experience_log(
+        description: str,
+        company_name: str | None = None,
+        company_id: int | None = None,
+        auth_token: str | None = None,
+        ctx: Context | None = None,
+    ) -> dict[str, Any]:
+        return await add_experience_log(
+            description=description,
+            company_name=company_name,
+            company_id=company_id,
+            auth_token=auth_token,
+            ctx=ctx,
+        )
 
     # -------------------------------------------------------------------------
     # Workspaces Tools (Read-Only)
@@ -693,6 +857,40 @@ def register_tools(server: MCPServer) -> None:
             companies = comps_res.scalars().all()
             exp_summary = calculate_experience_summary(list(companies))
 
+            # Fetch experience logs
+            logs_res = await db.execute(
+                select(ExperienceLog)
+                .where(ExperienceLog.user_id == user.id)
+                .order_by(ExperienceLog.created_at.desc())
+            )
+            experience_logs = logs_res.scalars().all()
+            logs_by_company: dict[int, list[dict[str, Any]]] = {}
+            formatted_logs: list[dict[str, Any]] = []
+            for log in experience_logs:
+                formatted_logs.append(
+                    {
+                        "id": log.id,
+                        "company_id": log.company_id,
+                        "company_name": log.company_name,
+                        "description": log.description,
+                        "created_at": log.created_at.isoformat(),
+                        "updated_at": log.updated_at.isoformat(),
+                    }
+                )
+                logs_by_company.setdefault(log.company_id, []).append(
+                    {
+                        "id": log.id,
+                        "description": log.description,
+                        "created_at": log.created_at.isoformat(),
+                        "updated_at": log.updated_at.isoformat(),
+                    }
+                )
+
+            for comp_item in exp_summary["timeline"]:
+                c_logs = logs_by_company.get(comp_item["id"], [])
+                comp_item["experience_logs"] = c_logs
+                comp_item["total_logs"] = len(c_logs)
+
             # 4. Fetch workspaces
             ws_res = await db.execute(
                 select(Workspace)
@@ -722,6 +920,8 @@ def register_tools(server: MCPServer) -> None:
                 "total_work_experience": exp_summary["total_experience"],
                 "active_roles": exp_summary["active_positions"],
                 "work_timeline": exp_summary["timeline"],
+                "experience_logs": formatted_logs,
+                "total_experience_logs": len(formatted_logs),
                 "skills_matrix": {
                     "total_skills": len(skills),
                     "by_proficiency": skills_by_proficiency,

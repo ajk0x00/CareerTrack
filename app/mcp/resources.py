@@ -5,6 +5,7 @@ Exposes URI-based resources for AI clients to directly inspect:
 - careertrack://skills
 - careertrack://preferences
 - careertrack://experience
+- careertrack://experience-logs
 - careertrack://experience-summary
 - careertrack://career-context
 """
@@ -20,6 +21,7 @@ from app.core.database import async_session_factory
 from app.mcp.auth import resolve_user
 from app.mcp.experience import calculate_experience_summary, compute_company_tenure
 from app.models.company import CompanyWorked
+from app.models.experience_log import ExperienceLog
 from app.models.job import Job, JobStatus
 from app.models.preference import Preference, PreferenceImportance
 from app.models.skill import Skill, SkillProficiency
@@ -121,7 +123,7 @@ def register_resources(server: MCPServer) -> None:
     @server.resource(
         "careertrack://experience",
         name="Work Experience Timeline",
-        description="Timeline of companies worked in, roles, and formatted tenures.",
+        description="Timeline of companies worked in, roles, formatted tenures, and logged accomplishments.",
         mime_type="application/json",
     )
     async def get_experience_resource() -> str:
@@ -139,11 +141,30 @@ def register_resources(server: MCPServer) -> None:
             result = await db.execute(stmt)
             companies = result.scalars().all()
 
+            # Query experience logs
+            logs_by_company: dict[int, list[dict[str, Any]]] = {}
+            if companies:
+                logs_res = await db.execute(
+                    select(ExperienceLog)
+                    .where(ExperienceLog.user_id == user.id)
+                    .order_by(ExperienceLog.created_at.desc())
+                )
+                for log in logs_res.scalars().all():
+                    logs_by_company.setdefault(log.company_id, []).append(
+                        {
+                            "id": log.id,
+                            "description": log.description,
+                            "created_at": log.created_at.isoformat(),
+                            "updated_at": log.updated_at.isoformat(),
+                        }
+                    )
+
             timeline = []
             for c in companies:
                 months, tenure_formatted = compute_company_tenure(
                     c.start_date, c.end_date, c.actively_working
                 )
+                comp_logs = logs_by_company.get(c.id, [])
                 timeline.append(
                     {
                         "id": c.id,
@@ -154,10 +175,49 @@ def register_resources(server: MCPServer) -> None:
                         "actively_working": c.actively_working,
                         "tenure_months": months,
                         "tenure_formatted": tenure_formatted,
+                        "experience_logs": comp_logs,
+                        "total_logs": len(comp_logs),
                     }
                 )
 
             return json.dumps({"companies": timeline, "total": len(timeline)}, indent=2)
+
+    @server.resource(
+        "careertrack://experience-logs",
+        name="Experience Accomplishment Logs",
+        description="Detailed log of work achievements, accomplishments, and project highlights for the user.",
+        mime_type="application/json",
+    )
+    async def get_experience_logs_resource() -> str:
+        async with async_session_factory() as db:
+            try:
+                user = await resolve_user(db)
+            except Exception as exc:
+                raise ResourceError(f"Authentication error: {exc}") from exc
+
+            stmt = (
+                select(ExperienceLog)
+                .where(ExperienceLog.user_id == user.id)
+                .order_by(ExperienceLog.created_at.desc())
+            )
+            result = await db.execute(stmt)
+            logs = result.scalars().all()
+
+            data = {
+                "experience_logs": [
+                    {
+                        "id": log.id,
+                        "company_id": log.company_id,
+                        "company_name": log.company_name,
+                        "description": log.description,
+                        "created_at": log.created_at.isoformat(),
+                        "updated_at": log.updated_at.isoformat(),
+                    }
+                    for log in logs
+                ],
+                "total": len(logs),
+            }
+            return json.dumps(data, indent=2)
 
     @server.resource(
         "careertrack://experience-summary",
@@ -231,6 +291,40 @@ def register_resources(server: MCPServer) -> None:
             companies = comps_res.scalars().all()
             exp_summary = calculate_experience_summary(list(companies))
 
+            # Experience logs
+            logs_res = await db.execute(
+                select(ExperienceLog)
+                .where(ExperienceLog.user_id == user.id)
+                .order_by(ExperienceLog.created_at.desc())
+            )
+            experience_logs = logs_res.scalars().all()
+            logs_by_company: dict[int, list[dict[str, Any]]] = {}
+            formatted_logs: list[dict[str, Any]] = []
+            for log in experience_logs:
+                formatted_logs.append(
+                    {
+                        "id": log.id,
+                        "company_id": log.company_id,
+                        "company_name": log.company_name,
+                        "description": log.description,
+                        "created_at": log.created_at.isoformat(),
+                        "updated_at": log.updated_at.isoformat(),
+                    }
+                )
+                logs_by_company.setdefault(log.company_id, []).append(
+                    {
+                        "id": log.id,
+                        "description": log.description,
+                        "created_at": log.created_at.isoformat(),
+                        "updated_at": log.updated_at.isoformat(),
+                    }
+                )
+
+            for comp_item in exp_summary["timeline"]:
+                c_logs = logs_by_company.get(comp_item["id"], [])
+                comp_item["experience_logs"] = c_logs
+                comp_item["total_logs"] = len(c_logs)
+
             # Workspaces
             ws_res = await db.execute(
                 select(Workspace)
@@ -260,6 +354,8 @@ def register_resources(server: MCPServer) -> None:
                 "total_work_experience": exp_summary["total_experience"],
                 "active_roles": exp_summary["active_positions"],
                 "work_timeline": exp_summary["timeline"],
+                "experience_logs": formatted_logs,
+                "total_experience_logs": len(formatted_logs),
                 "skills_matrix": {
                     "total_skills": len(skills),
                     "by_proficiency": skills_by_proficiency,
