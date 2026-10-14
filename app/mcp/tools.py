@@ -4,8 +4,8 @@ Exposes tools for:
 - User profile details omitting private email and phone (get_profile)
 - Technical and soft skills (get_skills)
 - Career preferences and priorities (get_preferences)
-- Work experience timeline and accomplishments (get_work_experience)
-- Logged project accomplishments and work achievements (get_experience_logs)
+- Chronological employment history and company timeline (get_employment_history)
+- Logged project accomplishments and work achievements (get_work_accomplishments)
 - Adding target job opportunities to the pipeline (add_job)
 """
 
@@ -152,16 +152,24 @@ def register_tools(server: MCPServer) -> None:
             }
 
     # -------------------------------------------------------------------------
-    # Work Experience Tools
+    # Employment History & Timeline Tools
     # -------------------------------------------------------------------------
 
     @server.tool(
-        name="get_work_experience",
-        description="Retrieve the user's work experience timeline including company names, dates, employment types, calculated tenures, and logged accomplishments.",
+        name="get_employment_history",
+        description=(
+            "Retrieve the user's chronological employment history and company timeline. "
+            "Returns high-level employment records: company names, start and end dates, actively working status, "
+            "employment arrangements (full_time, part_time, contract, freelance, internship), and computed tenures in years and months. "
+            "Use this tool when you need to know where the user worked and for how long. "
+            "Do NOT use this tool for reading detailed project accomplishments or engineering deliverables; "
+            "use 'get_work_accomplishments' instead."
+        ),
     )
-    async def get_work_experience(
+    async def get_employment_history(
         actively_working: bool | None = None,
         employment_type: str | None = None,
+        include_accomplishments: bool = True,
         include_logs: bool = True,
         auth_token: str | None = None,
         ctx: Context | None = None,
@@ -186,9 +194,10 @@ def register_tools(server: MCPServer) -> None:
             result = await db.execute(stmt)
             companies = result.scalars().all()
 
-            # Fetch experience logs for user if requested
+            # Fetch experience logs/accomplishments for user if requested
             logs_by_company: dict[int, list[dict[str, Any]]] = {}
-            if include_logs and companies:
+            should_include = include_accomplishments and include_logs
+            if should_include and companies:
                 logs_res = await db.execute(
                     select(ExperienceLog)
                     .where(ExperienceLog.user_id == user.id)
@@ -220,8 +229,9 @@ def register_tools(server: MCPServer) -> None:
                         "actively_working": c.actively_working,
                         "tenure_months": months,
                         "tenure_formatted": tenure_formatted,
+                        "accomplishments": comp_logs,
                         "experience_logs": comp_logs,
-                        "total_logs": len(comp_logs),
+                        "total_accomplishments": len(comp_logs),
                     }
                 )
 
@@ -230,13 +240,27 @@ def register_tools(server: MCPServer) -> None:
                 "total": len(timeline),
             }
 
+    # -------------------------------------------------------------------------
+    # Work Accomplishments & Project Achievements Tools
+    # -------------------------------------------------------------------------
+
     @server.tool(
-        name="get_experience_logs",
-        description="Retrieve the user's logged work experiences, project accomplishments, and achievements. Supports filtering by company_name, company_id, or search query.",
+        name="get_work_accomplishments",
+        description=(
+            "Retrieve specific work accomplishments, technical achievements, project deliverables, "
+            "and impact bullet points logged by the user across their career. "
+            "Supports filtering by company name, company ID, or keyword search across accomplishment descriptions "
+            "(e.g., 'PostgreSQL', 'migration', 'agent', 'Kubernetes'). "
+            "Use this tool when drafting resume bullet points, preparing interview stories, or finding evidence "
+            "of technical accomplishments. "
+            "Do NOT use this tool for high-level company dates, tenures, or employment arrangements; "
+            "use 'get_employment_history' instead."
+        ),
     )
-    async def get_experience_logs(
+    async def get_work_accomplishments(
         company_name: str | None = None,
         company_id: int | None = None,
+        query: str | None = None,
         q: str | None = None,
         limit: int = 50,
         auth_token: str | None = None,
@@ -255,26 +279,30 @@ def register_tools(server: MCPServer) -> None:
                     CompanyWorked.company_name.ilike(f"%{company_name.strip()}%")
                 )
 
-            if q and q.strip():
-                stmt = stmt.where(ExperienceLog.description.ilike(f"%{q.strip()}%"))
+            search_query = (query or q or "").strip()
+            if search_query:
+                stmt = stmt.where(ExperienceLog.description.ilike(f"%{search_query}%"))
 
             stmt = stmt.order_by(ExperienceLog.created_at.desc()).limit(max(1, min(limit, 200)))
             result = await db.execute(stmt)
             logs = result.scalars().all()
 
+            formatted_logs = [
+                {
+                    "id": log.id,
+                    "company_id": log.company_id,
+                    "company_name": log.company_name,
+                    "description": log.description,
+                    "created_at": log.created_at.isoformat(),
+                    "updated_at": log.updated_at.isoformat(),
+                }
+                for log in logs
+            ]
+
             return {
-                "experience_logs": [
-                    {
-                        "id": log.id,
-                        "company_id": log.company_id,
-                        "company_name": log.company_name,
-                        "description": log.description,
-                        "created_at": log.created_at.isoformat(),
-                        "updated_at": log.updated_at.isoformat(),
-                    }
-                    for log in logs
-                ],
-                "total": len(logs),
+                "accomplishments": formatted_logs,
+                "experience_logs": formatted_logs,
+                "total": len(formatted_logs),
             }
 
     # -------------------------------------------------------------------------
