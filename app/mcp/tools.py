@@ -1,12 +1,11 @@
 """MCP tools definitions for CareerTrack.
 
-Exposes read-only inspection tools for querying:
-- Technical and soft skills (with optional proficiency or search query filtering)
-- Career preferences and priorities (with optional importance filtering)
-- Companies worked in, tenure, and verified work experience timeline
-- Experience summary with ATS-grade calendar tenure calculation
-- Workspaces
-- Comprehensive ATS-ready career context snapshot
+Exposes tools for:
+- Technical and soft skills (get_skills)
+- Career preferences and priorities (get_preferences)
+- Work experience timeline and accomplishments (get_work_experience)
+- Logged project accomplishments and work achievements (get_experience_logs)
+- Adding target job opportunities to the pipeline (add_job)
 """
 
 from datetime import date
@@ -18,23 +17,19 @@ from sqlalchemy import func, select
 
 from app.core.database import async_session_factory
 from app.mcp.auth import resolve_user
-from app.mcp.experience import (
-    calculate_experience_summary,
-    compute_company_tenure,
-)
+from app.mcp.experience import compute_company_tenure
 from app.models.company import CompanyWorked, EmploymentType
 from app.models.experience_log import ExperienceLog
 from app.models.job import Job, JobStatus, WorkplaceType
 from app.models.preference import Preference, PreferenceImportance
 from app.models.skill import Skill, SkillProficiency
-from app.models.workspace import Workspace
 
 
 def register_tools(server: MCPServer) -> None:
-    """Registers CareerTrack read-only tools onto the provided MCPServer instance."""
+    """Registers CareerTrack tools onto the provided MCPServer instance."""
 
     # -------------------------------------------------------------------------
-    # Skills Tools (Read-Only)
+    # Skills Tools
     # -------------------------------------------------------------------------
 
     @server.tool(
@@ -82,7 +77,7 @@ def register_tools(server: MCPServer) -> None:
             }
 
     # -------------------------------------------------------------------------
-    # Career Preferences Tools (Read-Only)
+    # Career Preferences Tools
     # -------------------------------------------------------------------------
 
     @server.tool(
@@ -134,7 +129,7 @@ def register_tools(server: MCPServer) -> None:
             }
 
     # -------------------------------------------------------------------------
-    # Work Experience Tools (Read-Only)
+    # Work Experience Tools
     # -------------------------------------------------------------------------
 
     @server.tool(
@@ -213,28 +208,6 @@ def register_tools(server: MCPServer) -> None:
             }
 
     @server.tool(
-        name="get_experience_summary",
-        description="Compute total verified years and months of work experience (with non-overlapping calendar intervals), active roles, and tenure breakdown.",
-    )
-    async def get_experience_summary(
-        auth_token: str | None = None,
-        ctx: Context | None = None,
-    ) -> dict[str, Any]:
-        async with async_session_factory() as db:
-            user = await resolve_user(db, auth_token=auth_token, ctx=ctx)
-
-            stmt = (
-                select(CompanyWorked)
-                .where(CompanyWorked.user_id == user.id)
-                .order_by(CompanyWorked.start_date.desc())
-            )
-            result = await db.execute(stmt)
-            companies = result.scalars().all()
-
-            summary = calculate_experience_summary(list(companies))
-            return summary
-
-    @server.tool(
         name="get_experience_logs",
         description="Retrieve the user's logged work experiences, project accomplishments, and achievements. Supports filtering by company_name, company_id, or search query.",
     )
@@ -281,305 +254,9 @@ def register_tools(server: MCPServer) -> None:
                 "total": len(logs),
             }
 
-    @server.tool(
-        name="add_experience_log",
-        description="Log a new work experience or project accomplishment entry for a company. Matches an existing company by company_name or company_id, or automatically creates the company record if it does not yet exist.",
-    )
-    async def add_experience_log(
-        description: str,
-        company_name: str | None = None,
-        company_id: int | None = None,
-        auth_token: str | None = None,
-        ctx: Context | None = None,
-    ) -> dict[str, Any]:
-        clean_desc = description.strip() if description else ""
-        if not clean_desc:
-            raise ToolError("Experience log description cannot be empty.")
-
-        async with async_session_factory() as db:
-            user = await resolve_user(db, auth_token=auth_token, ctx=ctx)
-
-            target_company: CompanyWorked | None = None
-
-            if company_id is not None:
-                comp_res = await db.execute(
-                    select(CompanyWorked).where(
-                        CompanyWorked.id == company_id,
-                        CompanyWorked.user_id == user.id,
-                    )
-                )
-                target_company = comp_res.scalar_one_or_none()
-                if not target_company:
-                    raise ToolError(f"No company found with ID {company_id} for this user.")
-
-            elif company_name and company_name.strip():
-                clean_name = company_name.strip()
-                comp_res = await db.execute(
-                    select(CompanyWorked).where(
-                        CompanyWorked.user_id == user.id,
-                        CompanyWorked.company_name.ilike(clean_name),
-                    )
-                )
-                target_company = comp_res.scalars().first()
-
-                if not target_company:
-                    # Auto-provision CompanyWorked for the user
-                    target_company = CompanyWorked(
-                        user_id=user.id,
-                        company_name=clean_name,
-                        employment_type=EmploymentType.FULL_TIME.value,
-                        start_date=date.today(),
-                        actively_working=True,
-                    )
-                    db.add(target_company)
-                    await db.flush()
-            else:
-                raise ToolError("Either 'company_name' or 'company_id' must be provided.")
-
-            new_log = ExperienceLog(
-                user_id=user.id,
-                company_id=target_company.id,
-                description=clean_desc,
-            )
-            db.add(new_log)
-            await db.commit()
-            await db.refresh(new_log)
-
-            return {
-                "message": f"Successfully logged experience for {target_company.company_name}",
-                "experience_log": {
-                    "id": new_log.id,
-                    "company_id": new_log.company_id,
-                    "company_name": target_company.company_name,
-                    "description": new_log.description,
-                    "created_at": new_log.created_at.isoformat(),
-                },
-            }
-
-    @server.tool(
-        name="create_experience_log",
-        description="Alias for add_experience_log. Log a new work experience or project accomplishment entry.",
-    )
-    async def create_experience_log(
-        description: str,
-        company_name: str | None = None,
-        company_id: int | None = None,
-        auth_token: str | None = None,
-        ctx: Context | None = None,
-    ) -> dict[str, Any]:
-        return await add_experience_log(
-            description=description,
-            company_name=company_name,
-            company_id=company_id,
-            auth_token=auth_token,
-            ctx=ctx,
-        )
-
     # -------------------------------------------------------------------------
-    # Workspaces Tools (Read-Only)
+    # Jobs Tools
     # -------------------------------------------------------------------------
-
-    @server.tool(
-        name="get_workspaces",
-        description="Retrieve all workspaces for the authenticated user.",
-    )
-    async def get_workspaces(
-        auth_token: str | None = None,
-        ctx: Context | None = None,
-    ) -> dict[str, Any]:
-        async with async_session_factory() as db:
-            user = await resolve_user(db, auth_token=auth_token, ctx=ctx)
-
-            stmt = (
-                select(Workspace)
-                .where(Workspace.user_id == user.id)
-                .order_by(Workspace.created_at.asc())
-            )
-            result = await db.execute(stmt)
-            workspaces = result.scalars().all()
-
-            return {
-                "workspaces": [
-                    {
-                        "id": w.id,
-                        "name": w.name,
-                        "created_at": w.created_at.isoformat(),
-                    }
-                    for w in workspaces
-                ],
-                "total": len(workspaces),
-            }
-
-    # -------------------------------------------------------------------------
-    # Job Pipeline Tools (Read & Create)
-    # -------------------------------------------------------------------------
-
-    @server.tool(
-        name="get_jobs",
-        description=(
-            "Retrieve the user's tracked job postings and pipeline applications. "
-            "Supports optional filtering by pipeline status (saved, applied, interviewing, offer), "
-            "workplace type (remote, hybrid, on_site), or search query across title, company, and location."
-        ),
-    )
-    async def get_jobs(
-        status: str | None = None,
-        query: str | None = None,
-        workplace_type: str | None = None,
-        auth_token: str | None = None,
-        ctx: Context | None = None,
-    ) -> dict[str, Any]:
-        async with async_session_factory() as db:
-            user = await resolve_user(db, auth_token=auth_token, ctx=ctx)
-
-            stmt = select(Job).where(Job.user_id == user.id)
-            if status:
-                clean_status = status.strip().lower().replace("-", "_").replace(" ", "_")
-                valid_statuses = [s.value for s in JobStatus]
-                if clean_status not in valid_statuses:
-                    raise ToolError(
-                        f"Invalid status '{status}'. Allowed values: {', '.join(valid_statuses)}"
-                    )
-                stmt = stmt.where(Job.status == clean_status)
-
-            if workplace_type:
-                clean_wp = workplace_type.strip().lower().replace("-", "_").replace(" ", "_")
-                valid_wp = [w.value for w in WorkplaceType]
-                if clean_wp not in valid_wp:
-                    raise ToolError(
-                        f"Invalid workplace_type '{workplace_type}'. Allowed values: {', '.join(valid_wp)}"
-                    )
-                stmt = stmt.where(Job.workplace_type == clean_wp)
-
-            if query and query.strip():
-                clean_q = f"%{query.strip().lower()}%"
-                stmt = stmt.where(
-                    func.lower(Job.title).like(clean_q)
-                    | func.lower(Job.company_name).like(clean_q)
-                    | func.lower(Job.location).like(clean_q)
-                )
-
-            stmt = stmt.order_by(Job.updated_at.desc())
-            result = await db.execute(stmt)
-            jobs = result.scalars().all()
-
-            return {
-                "jobs": [
-                    {
-                        "id": j.id,
-                        "title": j.title,
-                        "company_name": j.company_name,
-                        "status": j.status,
-                        "current_stage": j.current_stage,
-                        "job_url": j.job_url,
-                        "location": j.location,
-                        "workplace_type": j.workplace_type,
-                        "employment_type": j.employment_type,
-                        "department": j.department,
-                        "description": j.description,
-                        "requirements": j.requirements,
-                        "salary_min": j.salary_min,
-                        "salary_max": j.salary_max,
-                        "salary_currency": j.salary_currency,
-                        "salary_interval": j.salary_interval,
-                        "posted_date": j.posted_date.isoformat() if j.posted_date else None,
-                        "deadline_date": j.deadline_date.isoformat() if j.deadline_date else None,
-                        "applied_date": j.applied_date.isoformat() if j.applied_date else None,
-                        "excitement_rating": j.excitement_rating,
-                        "notes": j.notes,
-                        "contact_name": j.contact_name,
-                        "contact_email": j.contact_email,
-                        "contact_phone": j.contact_phone,
-                        "created_at": j.created_at.isoformat(),
-                        "updated_at": j.updated_at.isoformat(),
-                    }
-                    for j in jobs
-                ],
-                "total": len(jobs),
-            }
-
-    @server.tool(
-        name="get_job",
-        description="Retrieve complete details of a specific job posting from the user's pipeline by ID.",
-    )
-    async def get_job(
-        job_id: int,
-        auth_token: str | None = None,
-        ctx: Context | None = None,
-    ) -> dict[str, Any]:
-        async with async_session_factory() as db:
-            user = await resolve_user(db, auth_token=auth_token, ctx=ctx)
-
-            stmt = select(Job).where(Job.id == job_id, Job.user_id == user.id)
-            result = await db.execute(stmt)
-            job = result.scalars().first()
-
-            if not job:
-                raise ToolError(f"Job record with ID {job_id} not found.")
-
-            return {
-                "job": {
-                    "id": job.id,
-                    "title": job.title,
-                    "company_name": job.company_name,
-                    "status": job.status,
-                    "current_stage": job.current_stage,
-                    "job_url": job.job_url,
-                    "location": job.location,
-                    "workplace_type": job.workplace_type,
-                    "employment_type": job.employment_type,
-                    "department": job.department,
-                    "description": job.description,
-                    "requirements": job.requirements,
-                    "salary_min": job.salary_min,
-                    "salary_max": job.salary_max,
-                    "salary_currency": job.salary_currency,
-                    "salary_interval": job.salary_interval,
-                    "posted_date": job.posted_date.isoformat() if job.posted_date else None,
-                    "deadline_date": job.deadline_date.isoformat() if job.deadline_date else None,
-                    "applied_date": job.applied_date.isoformat() if job.applied_date else None,
-                    "excitement_rating": job.excitement_rating,
-                    "notes": job.notes,
-                    "contact_name": job.contact_name,
-                    "contact_email": job.contact_email,
-                    "contact_phone": job.contact_phone,
-                    "created_at": job.created_at.isoformat(),
-                    "updated_at": job.updated_at.isoformat(),
-                }
-            }
-
-    @server.tool(
-        name="get_job_pipeline_summary",
-        description="Retrieve an aggregate breakdown of the user's active job pipeline across stages (saved, applied, interviewing, offer).",
-    )
-    async def get_job_pipeline_summary(
-        auth_token: str | None = None,
-        ctx: Context | None = None,
-    ) -> dict[str, Any]:
-        async with async_session_factory() as db:
-            user = await resolve_user(db, auth_token=auth_token, ctx=ctx)
-
-            stmt = (
-                select(Job.status, func.count(Job.id))
-                .where(Job.user_id == user.id)
-                .group_by(Job.status)
-            )
-            result = await db.execute(stmt)
-            counts = dict(result.all())
-
-            saved = counts.get(JobStatus.SAVED.value, 0)
-            applied = counts.get(JobStatus.APPLIED.value, 0)
-            interviewing = counts.get(JobStatus.INTERVIEWING.value, 0)
-            offer = counts.get(JobStatus.OFFER.value, 0)
-            total = sum(counts.values())
-
-            return {
-                "total": total,
-                "saved": saved,
-                "applied": applied,
-                "interviewing": interviewing,
-                "offer": offer,
-            }
 
     @server.tool(
         name="add_job",
@@ -740,212 +417,4 @@ def register_tools(server: MCPServer) -> None:
                     "excitement_rating": job.excitement_rating,
                     "created_at": job.created_at.isoformat(),
                 },
-            }
-
-    @server.tool(
-        name="create_job",
-        description="Alias for add_job. Creates a new job posting entry in the user's career pipeline.",
-    )
-    async def create_job(
-        title: str,
-        company_name: str,
-        status: str = "saved",
-        job_url: str | None = None,
-        location: str | None = None,
-        workplace_type: str | None = None,
-        employment_type: str | None = None,
-        department: str | None = None,
-        description: str | None = None,
-        requirements: str | None = None,
-        salary_min: float | None = None,
-        salary_max: float | None = None,
-        salary_currency: str = "USD",
-        salary_interval: str | None = "yearly",
-        posted_date: str | None = None,
-        deadline_date: str | None = None,
-        current_stage: str | None = None,
-        applied_date: str | None = None,
-        excitement_rating: int | None = None,
-        notes: str | None = None,
-        contact_name: str | None = None,
-        contact_email: str | None = None,
-        contact_phone: str | None = None,
-        auth_token: str | None = None,
-        ctx: Context | None = None,
-    ) -> dict[str, Any]:
-        return await add_job(
-            title=title,
-            company_name=company_name,
-            status=status,
-            job_url=job_url,
-            location=location,
-            workplace_type=workplace_type,
-            employment_type=employment_type,
-            department=department,
-            description=description,
-            requirements=requirements,
-            salary_min=salary_min,
-            salary_max=salary_max,
-            salary_currency=salary_currency,
-            salary_interval=salary_interval,
-            posted_date=posted_date,
-            deadline_date=deadline_date,
-            current_stage=current_stage,
-            applied_date=applied_date,
-            excitement_rating=excitement_rating,
-            notes=notes,
-            contact_name=contact_name,
-            contact_email=contact_email,
-            contact_phone=contact_phone,
-            auth_token=auth_token,
-            ctx=ctx,
-        )
-
-    # -------------------------------------------------------------------------
-    # Unified Career Context Tool (ATS & Resume Ready)
-    # -------------------------------------------------------------------------
-
-    @server.tool(
-        name="get_career_context",
-        description=(
-            "Retrieve an aggregated, ATS-ready profile snapshot combining verified years of experience, "
-            "work timeline with tenures, skills matrix grouped by proficiency, ranked career preferences, "
-            "active job opportunities pipeline, and workspaces."
-        ),
-    )
-    async def get_career_context(
-        auth_token: str | None = None,
-        ctx: Context | None = None,
-    ) -> dict[str, Any]:
-        async with async_session_factory() as db:
-            user = await resolve_user(db, auth_token=auth_token, ctx=ctx)
-
-            # 1. Fetch skills
-            skills_res = await db.execute(
-                select(Skill).where(Skill.user_id == user.id).order_by(Skill.name.asc())
-            )
-            skills = skills_res.scalars().all()
-
-            skills_by_proficiency: dict[str, list[str]] = {
-                p.value: [] for p in SkillProficiency
-            }
-            for s in skills:
-                skills_by_proficiency.setdefault(s.proficiency, []).append(s.name)
-
-            # 2. Fetch preferences
-            prefs_res = await db.execute(
-                select(Preference)
-                .where(Preference.user_id == user.id)
-                .order_by(Preference.created_at.desc())
-            )
-            preferences = prefs_res.scalars().all()
-
-            prefs_by_importance: dict[str, list[dict[str, Any]]] = {
-                i.value: [] for i in PreferenceImportance
-            }
-            for p in preferences:
-                prefs_by_importance.setdefault(p.importance, []).append(
-                    {"id": p.id, "title": p.title, "description": p.description}
-                )
-
-            # 3. Fetch experience & calculate metrics
-            comps_res = await db.execute(
-                select(CompanyWorked)
-                .where(CompanyWorked.user_id == user.id)
-                .order_by(CompanyWorked.start_date.desc())
-            )
-            companies = comps_res.scalars().all()
-            exp_summary = calculate_experience_summary(list(companies))
-
-            # Fetch experience logs
-            logs_res = await db.execute(
-                select(ExperienceLog)
-                .where(ExperienceLog.user_id == user.id)
-                .order_by(ExperienceLog.created_at.desc())
-            )
-            experience_logs = logs_res.scalars().all()
-            logs_by_company: dict[int, list[dict[str, Any]]] = {}
-            formatted_logs: list[dict[str, Any]] = []
-            for log in experience_logs:
-                formatted_logs.append(
-                    {
-                        "id": log.id,
-                        "company_id": log.company_id,
-                        "company_name": log.company_name,
-                        "description": log.description,
-                        "created_at": log.created_at.isoformat(),
-                        "updated_at": log.updated_at.isoformat(),
-                    }
-                )
-                logs_by_company.setdefault(log.company_id, []).append(
-                    {
-                        "id": log.id,
-                        "description": log.description,
-                        "created_at": log.created_at.isoformat(),
-                        "updated_at": log.updated_at.isoformat(),
-                    }
-                )
-
-            for comp_item in exp_summary["timeline"]:
-                c_logs = logs_by_company.get(comp_item["id"], [])
-                comp_item["experience_logs"] = c_logs
-                comp_item["total_logs"] = len(c_logs)
-
-            # 4. Fetch workspaces
-            ws_res = await db.execute(
-                select(Workspace)
-                .where(Workspace.user_id == user.id)
-                .order_by(Workspace.created_at.asc())
-            )
-            workspaces = ws_res.scalars().all()
-
-            # 5. Fetch jobs pipeline
-            jobs_res = await db.execute(
-                select(Job).where(Job.user_id == user.id).order_by(Job.updated_at.desc())
-            )
-            jobs = jobs_res.scalars().all()
-            pipeline_counts = {s.value: 0 for s in JobStatus}
-            for j in jobs:
-                pipeline_counts[j.status] = pipeline_counts.get(j.status, 0) + 1
-
-            return {
-                "profile": {
-                    "id": user.id,
-                    "name": user.name,
-                    "email": user.email,
-                    "phone": user.phone,
-                    "address": user.address,
-                    "socials": user.socials,
-                },
-                "total_work_experience": exp_summary["total_experience"],
-                "active_roles": exp_summary["active_positions"],
-                "work_timeline": exp_summary["timeline"],
-                "experience_logs": formatted_logs,
-                "total_experience_logs": len(formatted_logs),
-                "skills_matrix": {
-                    "total_skills": len(skills),
-                    "by_proficiency": skills_by_proficiency,
-                },
-                "career_preferences": {
-                    "total_preferences": len(preferences),
-                    "by_importance": prefs_by_importance,
-                },
-                "job_pipeline": {
-                    "total_opportunities": len(jobs),
-                    "summary_by_stage": pipeline_counts,
-                    "active_roles": [
-                        {
-                            "id": j.id,
-                            "title": j.title,
-                            "company_name": j.company_name,
-                            "status": j.status,
-                            "current_stage": j.current_stage,
-                            "location": j.location,
-                        }
-                        for j in jobs
-                    ],
-                },
-                "workspaces": [
-                    {"id": w.id, "name": w.name} for w in workspaces
-                ],
             }
