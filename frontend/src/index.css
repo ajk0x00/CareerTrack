@@ -1521,73 +1521,16 @@ body {
   min-height: calc(100vh - 64px);
 }
 
-@media (min-width: 1024px) {
-  .workspace-root {
-    height: 100vh;
-    height: 100dvh;
-    overflow: hidden;
-  }
-
-  .workspace-root .app-footer {
-    display: none;
-  }
-
-  .workspace-body {
-    flex-direction: row;
-    height: calc(100vh - 64px);
-    max-height: calc(100vh - 64px);
-    overflow: hidden;
-    min-height: 0;
-  }
-
-  .jd-panel {
-    width: 380px;
-    height: 100%;
-    max-height: 100%;
-    overflow: hidden;
-  }
-
-  .jd-panel-header {
-    position: static;
-    flex-shrink: 0;
-  }
-
-  .jd-panel-body {
-    flex: 1;
-    overflow-y: auto;
-    min-height: 0;
-    overscroll-behavior: contain;
-  }
-
-  .jd-panel-cta-wrapper {
-    position: static;
-    flex-shrink: 0;
-  }
-
-  .resume-canvas-area {
-    height: 100%;
-    max-height: 100%;
-    min-width: 0;
-    overflow: hidden;
-  }
-
-  .canvas-top-bar {
-    position: static;
-    flex-shrink: 0;
-  }
-
-  .resume-sheet-wrapper {
-    flex: 1;
-    overflow-y: auto;
-    min-height: 0;
-    overscroll-behavior: contain;
-  }
-}
-
-@media (min-width: 1280px) {
-  .jd-panel {
-    width: 420px;
-  }
+/* LEFT COLUMN: Target Job Description Panel */
+.jd-panel {
+  width: 100%;
+  background-color: var(--surface-container-lowest);
+  border-right: 1px solid rgba(211, 228, 254, 0.7);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  box-shadow: 1px 0 6px rgba(0, 0, 0, 0.02);
+  z-index: 20;
 }
 
 .jd-panel-header {
@@ -1595,9 +1538,6 @@ body {
   background-color: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--surface-container);
-  position: sticky;
-  top: 64px;
-  z-index: 10;
 }
 
 .flex-between {
@@ -1844,14 +1784,11 @@ body {
   color: var(--outline);
 }
 
-/* Sticky Bottom CTA */
+/* Bottom CTA */
 .jd-panel-cta-wrapper {
   padding: 16px 20px;
   background-color: var(--surface-container-lowest);
   border-top: 1px solid var(--surface-container);
-  position: sticky;
-  bottom: 0;
-  z-index: 10;
   box-shadow: 0 -4px 14px rgba(0, 0, 0, 0.03);
 }
 
@@ -1928,13 +1865,10 @@ body {
   display: flex;
   flex-direction: column;
   background-color: var(--surface);
-  overflow-y: auto;
+  min-width: 0;
 }
 
 .canvas-top-bar {
-  position: sticky;
-  top: 64px;
-  z-index: 30;
   background-color: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(12px);
   padding: 12px 24px;
@@ -2198,6 +2132,104 @@ body {
   padding: 24px;
   display: flex;
   justify-content: center;
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Mobile Sticky Elements (< 1024px) */
+@media (max-width: 1023px) {
+  .jd-panel-header {
+    position: sticky;
+    top: 64px;
+    z-index: 10;
+  }
+
+  .jd-panel-cta-wrapper {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+  }
+
+  .canvas-top-bar {
+    position: sticky;
+    top: 64px;
+    z-index: 30;
+  }
+}
+
+/* ==========================================================================
+   Desktop 2-Column Contained Workspace Layout (>= 1024px)
+   ========================================================================== */
+@media (min-width: 1024px) {
+  .workspace-root {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .workspace-root .app-footer {
+    display: none;
+  }
+
+  .workspace-body {
+    flex-direction: row;
+    height: calc(100vh - 64px);
+    max-height: calc(100vh - 64px);
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .jd-panel {
+    width: 380px;
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+  }
+
+  .jd-panel-header {
+    position: static;
+    top: auto;
+    flex-shrink: 0;
+  }
+
+  .jd-panel-body {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    overscroll-behavior: contain;
+  }
+
+  .jd-panel-cta-wrapper {
+    position: static;
+    bottom: auto;
+    flex-shrink: 0;
+  }
+
+  .resume-canvas-area {
+    height: 100%;
+    max-height: 100%;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .canvas-top-bar {
+    position: static;
+    top: auto;
+    flex-shrink: 0;
+  }
+
+  .resume-sheet-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    overscroll-behavior: contain;
+  }
+}
+
+@media (min-width: 1280px) {
+  .jd-panel {
+    width: 420px;
+  }
 }
 
 .resume-view-container {
