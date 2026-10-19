@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { User } from '../../types/auth'
 import type { UserPreferences } from '../../types/workspace'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 import {
   SettingsSidebar,
   ProfileTab,
@@ -35,6 +36,8 @@ export default function SettingsModal({
   onLogout,
 }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<SettingsTabId>(initialTab || 'profile')
+
+  useBodyScrollLock(isOpen)
 
   if (!isOpen) return null
 

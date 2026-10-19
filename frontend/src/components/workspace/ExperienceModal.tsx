@@ -5,6 +5,7 @@ import type {
   ExperienceLogItem,
 } from '../../types/workspace'
 import { useToast } from '../ToastContext'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 
 interface ExperienceModalProps {
   isOpen: boolean
@@ -23,6 +24,7 @@ export default function ExperienceModal({
   onExperienceLogsChange,
 }: ExperienceModalProps) {
   const toast = useToast()
+  useBodyScrollLock(isOpen)
   const token =
     propToken ||
     localStorage.getItem('careerTrack_token') ||
@@ -311,7 +313,9 @@ export default function ExperienceModal({
           </button>
         </div>
 
-        {/* Add/Edit Drawer Form */}
+        {/* Scrollable Modal Content */}
+        <div className="modal-body-scroll">
+          {/* Add/Edit Drawer Form */}
         {showDrawer && (
           <div className="drawer-panel">
             <div className="drawer-header">
@@ -519,6 +523,7 @@ export default function ExperienceModal({
             })}
           </div>
         )}
+        </div>
 
         {/* Modal Footer */}
         <div className="modal-footer">

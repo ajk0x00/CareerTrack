@@ -1,5 +1,6 @@
 import { useState, useRef, type DragEvent, type ChangeEvent } from 'react'
 import { useToast } from '../ToastContext'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 
 export interface ResumeImportResult {
   companies_created: number
@@ -22,6 +23,7 @@ export default function ResumeUploadModal({
   onImportSuccess,
 }: ResumeUploadModalProps) {
   const toast = useToast()
+  useBodyScrollLock(isOpen)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [markdownText, setMarkdownText] = useState<string>('')
@@ -187,8 +189,8 @@ export default function ResumeUploadModal({
           </button>
         </div>
 
-        {/* Modal Body */}
-        <div style={{ marginTop: '20px' }}>
+        {/* Modal Scrollable Body */}
+        <div className="modal-body-scroll">
           {error && (
             <div
               style={{
@@ -265,23 +267,6 @@ export default function ResumeUploadModal({
                     Skills ({importResult.skills_created} new, {importResult.skills_updated} updated)
                   </div>
                 </div>
-              </div>
-
-              <div className="modal-actions" style={{ padding: 0, justifyContent: 'flex-end', display: 'flex', gap: '10px' }}>
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={resetForm}
-                >
-                  Import Another
-                </button>
-                <button
-                  type="button"
-                  className="btn-canvas-primary"
-                  onClick={handleClose}
-                >
-                  Done
-                </button>
               </div>
             </div>
           ) : (
@@ -360,58 +345,55 @@ export default function ResumeUploadModal({
                   }}
                 />
               </div>
+            </div>
+          )}
+        </div>
 
-              {/* Action Buttons */}
-              <div
-                className="modal-actions"
-                style={{
-                  marginTop: '20px',
-                  padding: 0,
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                  gap: '10px',
-                }}
-              >
+        {/* Pinned Modal Footer */}
+        <div className="modal-footer">
+          <div />
+          <div className="modal-footer-btns">
+            {importResult ? (
+              <>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={resetForm}
+                >
+                  Import Another
+                </button>
+                <button
+                  type="button"
+                  className="action-btn-primary"
+                  onClick={handleClose}
+                >
+                  Done
+                </button>
+              </>
+            ) : (
+              <>
                 <button
                   type="button"
                   className="btn-secondary"
                   onClick={handleClose}
                   disabled={isSubmitting}
-                  style={{
-                    padding: '8px 16px',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                  }}
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
-                  className="btn-canvas-primary"
+                  className="action-btn-primary"
                   onClick={handleImport}
                   disabled={isSubmitting || !markdownText.trim()}
-                  style={{
-                    padding: '8px 18px',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    opacity: isSubmitting || !markdownText.trim() ? 0.6 : 1,
-                    cursor: isSubmitting || !markdownText.trim() ? 'not-allowed' : 'pointer',
-                  }}
                 >
                   <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
                     {isSubmitting ? 'hourglass_top' : 'auto_awesome'}
                   </span>
                   <span>{isSubmitting ? 'Extracting with AI...' : 'Extract & Sync to Profile'}</span>
                 </button>
-              </div>
-            </div>
-          )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

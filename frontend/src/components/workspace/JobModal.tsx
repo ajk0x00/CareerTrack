@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { JobItem, JobStatus } from '../../types/workspace'
 import { useToast } from '../ToastContext'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 
 interface JobModalProps {
   isOpen: boolean
@@ -47,6 +48,8 @@ export default function JobModal({
   const [notes, setNotes] = useState<string>(() => editingJob?.notes || '')
   const [description, setDescription] = useState<string>(() => editingJob?.description || '')
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
+
+  useBodyScrollLock(isOpen)
 
   if (!isOpen) return null
 
@@ -180,8 +183,12 @@ export default function JobModal({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} style={{ padding: '20px 24px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <form
+          onSubmit={handleSubmit}
+          style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}
+        >
+          <div className="modal-body-scroll">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {/* Title & Company */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
               <div className="form-group-compact">
@@ -401,27 +408,31 @@ export default function JobModal({
               />
             </div>
           </div>
+          </div>
 
-          {/* Action Buttons */}
-          <div className="modal-actions" style={{ marginTop: '20px', padding: 0 }}>
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={onClose}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="action-btn-primary"
-              disabled={isSubmitting}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
-                {isSubmitting ? 'hourglass_top' : 'save'}
-              </span>
-              <span>{isSubmitting ? 'Saving...' : editingJob ? 'Update Opportunity' : 'Save to Pipeline'}</span>
-            </button>
+          {/* Action Buttons Footer */}
+          <div className="modal-footer">
+            <div />
+            <div className="modal-footer-btns">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={onClose}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="action-btn-primary"
+                disabled={isSubmitting}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                  {isSubmitting ? 'hourglass_top' : 'save'}
+                </span>
+                <span>{isSubmitting ? 'Saving...' : editingJob ? 'Update Opportunity' : 'Save to Pipeline'}</span>
+              </button>
+            </div>
           </div>
         </form>
       </div>

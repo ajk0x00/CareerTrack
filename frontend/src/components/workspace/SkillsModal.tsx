@@ -8,6 +8,7 @@ import type {
 } from '../../types/workspace'
 import { useToast } from '../ToastContext'
 import { SkillCard, SkillForm } from './skills'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 
 interface SkillsModalProps {
   isOpen: boolean
@@ -27,6 +28,7 @@ export default function SkillsModal({
   onSkillsChange,
 }: SkillsModalProps) {
   const toast = useToast()
+  useBodyScrollLock(isOpen)
   const token =
     propToken ||
     localStorage.getItem('careerTrack_token') ||
