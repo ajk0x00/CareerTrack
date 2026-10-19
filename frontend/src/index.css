@@ -2129,9 +2129,10 @@ body {
 
 /* Resume Sheet Wrapper */
 .resume-sheet-wrapper {
-  padding: 24px;
+  padding: 32px 24px 64px 24px;
   display: flex;
   justify-content: center;
+  align-items: flex-start;
   flex: 1;
   overflow-y: auto;
 }
@@ -2223,6 +2224,8 @@ body {
     overflow-y: auto;
     min-height: 0;
     overscroll-behavior: contain;
+    padding: 32px 24px 64px 24px;
+    align-items: flex-start;
   }
 }
 
@@ -2234,30 +2237,37 @@ body {
 
 .resume-view-container {
   width: 100%;
-  max-width: 900px;
+  max-width: 800px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 20px;
+  height: auto;
   transition: all 0.3s ease;
 }
 
 .resume-view-container.flash-ring {
   box-shadow: 0 0 0 4px rgba(70, 72, 212, 0.35);
-  border-radius: 16px;
+  border-radius: 12px;
 }
 
 /* Crisp Executive ATS Resume Paper Simulation */
 .resume-sheet {
   background-color: var(--surface-container-lowest);
-  border-radius: 14px;
-  box-shadow: 0 10px 30px rgba(11, 28, 48, 0.08);
-  padding: 48px;
+  border: 1px solid rgba(211, 228, 254, 0.7);
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(11, 28, 48, 0.04), 0 8px 24px -4px rgba(11, 28, 48, 0.08);
+  padding: 48px 52px;
+  min-height: 1056px;
+  height: auto;
+  flex-shrink: 0;
   color: var(--on-surface);
 }
 
 @media (max-width: 640px) {
   .resume-sheet {
-    padding: 24px;
+    padding: 24px 20px;
+    min-height: auto;
   }
 }
 
@@ -2492,7 +2502,9 @@ body {
 /* Markdown Rendered Resume Extensions */
 .markdown-rendered-sheet {
   position: relative;
-  min-height: 800px;
+  min-height: 1056px;
+  height: auto;
+  flex-shrink: 0;
 }
 
 .resume-content-stream {
@@ -2660,11 +2672,14 @@ body {
 /* Markdown Editor View */
 .markdown-editor-card {
   background-color: var(--surface-container-lowest);
-  border-radius: 14px;
-  box-shadow: 0 10px 30px rgba(11, 28, 48, 0.08);
-  padding: 20px;
+  border: 1px solid rgba(211, 228, 254, 0.7);
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(11, 28, 48, 0.04), 0 8px 24px -4px rgba(11, 28, 48, 0.08);
+  padding: 24px;
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
+  height: auto;
 }
 
 .md-editor-header {
