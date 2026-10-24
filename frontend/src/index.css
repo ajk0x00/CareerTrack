@@ -2236,6 +2236,7 @@ body {
 }
 
 .resume-view-container {
+  container-type: inline-size;
   width: 100%;
   max-width: 800px;
   margin: 0 auto;
@@ -2252,7 +2253,8 @@ body {
 }
 
 /* Crisp Executive ATS Resume Paper Simulation */
-.resume-sheet {
+.resume-sheet,
+.resume-editor-surface {
   background-color: var(--surface-container-lowest);
   border: 1px solid rgba(211, 228, 254, 0.7);
   border-radius: 10px;
@@ -2261,11 +2263,14 @@ body {
   min-height: 1056px;
   height: auto;
   flex-shrink: 0;
+  font-size: clamp(12px, 1.7cqi, 14.5px);
+  line-height: 1.6;
   color: var(--on-surface);
 }
 
 @media (max-width: 640px) {
-  .resume-sheet {
+  .resume-sheet,
+  .resume-editor-surface {
     padding: 24px 20px;
     min-height: auto;
   }
@@ -2275,29 +2280,30 @@ body {
   margin-bottom: 28px;
 }
 
+/* The sheet header is always stacked: name, then role, then contact. A
+   two-column header wrapped the name at mid widths, and the same rule now
+   governs the rendered tab, the split panes and the editor surface. */
 .resume-header-top {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 12px;
+  align-items: flex-start;
+  gap: 6px;
 }
 
-@media (min-width: 640px) {
-  .resume-header-top {
-    flex-direction: row;
-    align-items: baseline;
-  }
-}
-
+/* Fluid so the sheet keeps one design at any pane width instead of needing a
+   per-mode font override (cqi resolves against the nearest sized container). */
 .resume-candidate-name {
-  font-size: 32px;
+  font-size: clamp(21px, 3.9cqi, 30px);
   font-weight: 800;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  white-space: nowrap;
   color: var(--on-surface);
 }
 
 .resume-target-role {
-  font-size: 17px;
+  font-size: clamp(12.5px, 1.9cqi, 16px);
   font-weight: 700;
   color: var(--primary);
   margin-top: 2px;
@@ -2307,15 +2313,11 @@ body {
   display: flex;
   flex-direction: column;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: clamp(10px, 1.5cqi, 12px);
+  line-height: 1.45;
   color: var(--on-surface-variant);
+  text-align: left;
   gap: 2px;
-}
-
-@media (min-width: 640px) {
-  .resume-contact-block {
-    text-align: right;
-  }
 }
 
 .resume-summary-box {
@@ -2514,10 +2516,12 @@ body {
 
 .resume-contact-row {
   line-height: 1.5;
+  /* Keep the bullet separators off the end of a wrapped line. */
+  text-wrap: pretty;
 }
 
 .resume-paragraph {
-  font-size: 14.5px;
+  font-size: clamp(12px, 1.7cqi, 14.5px);
   line-height: 1.65;
   color: var(--on-surface);
   margin: 6px 0;
@@ -2675,7 +2679,6 @@ body {
   border: 1px solid rgba(211, 228, 254, 0.7);
   border-radius: 10px;
   box-shadow: 0 1px 3px rgba(11, 28, 48, 0.04), 0 8px 24px -4px rgba(11, 28, 48, 0.08);
-  padding: 24px;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -2686,6 +2689,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--surface-container);
 }
@@ -2732,6 +2737,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .banner-left {
@@ -2779,14 +2785,14 @@ body {
 
 .md-raw-textarea {
   width: 100%;
-  min-height: 480px;
+  min-height: 60vh;
   flex: 1;
-  padding: 16px;
+  padding: 20px 22px;
   border-radius: 8px;
-  background-color: var(--surface-container-low);
-  border: 1px solid var(--surface-container-high);
+  background-color: var(--surface-container-lowest);
+  border: 1px solid var(--surface-container);
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 12.5px;
   line-height: 1.6;
   color: var(--on-surface);
   resize: vertical;
@@ -2796,6 +2802,64 @@ body {
 .md-raw-textarea:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 2px rgba(70, 72, 212, 0.15);
+}
+
+.md-header-hint {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background-color: var(--surface-container-low);
+  border: 1px solid var(--surface-container-high);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--on-surface-variant);
+}
+
+.md-header-hint code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+/* Split Editor + Preview Pane */
+.resume-view-container-split {
+  max-width: 1600px;
+}
+
+.resume-split-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 20px;
+  align-items: start;
+  width: 100%;
+}
+
+.resume-split-pane {
+  container-type: inline-size;
+  min-width: 0;
+  min-height: 0;
+  max-height: calc(100dvh - 320px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.resume-split-pane .resume-sheet,
+.resume-split-pane .resume-editor-surface {
+  padding: 28px 26px;
+}
+
+@media (max-width: 899px) {
+  .resume-split-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .resume-split-pane {
+    max-height: none;
+    overflow-y: visible;
+    scrollbar-gutter: auto;
+  }
 }
 
 /* ==========================================================================

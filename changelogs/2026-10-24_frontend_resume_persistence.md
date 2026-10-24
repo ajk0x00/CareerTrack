@@ -28,3 +28,13 @@
 - The exported blob URL is revoked on a 1 s timer rather than immediately after the anchor click, so browsers that defer the download do not lose the file.
 - The canvas header still carries designer copy that is not wired to data (`v3.2 - Stripe, Inc. Tailored`, `Last synthesized: Just now`) and the left panel seeds a sample Stripe description. These are inert labels, not measured values, and should be driven by the stored resume title and `updated_at` in a follow-up.
 - The canvas empty state now guards `RenderedResume`, whose no-markdown fallback still contains demo content; do not render it without a non-empty markdown buffer.
+
+## Follow-up (same day): editor/renderer parity and split view
+
+- `frontend/src/components/workspace/MarkdownEditor.tsx`: the raw textarea now sits on a resume-sheet-sized surface (document-scale type, A4-ish min height, vertical resize only) instead of a code-box card, and a `Header line` hint explains that the first `# Name` line is the resume title that feeds the rendered view and the exported PDF.
+- `frontend/src/components/workspace/ResumeCanvas.tsx`: added a third view mode `split` between `rendered` and `markdown`, rendering the editor and `RenderedResume` side by side with independent scrolling, collapsing to one column under 900px.
+- `frontend/src/index.css`: added `.resume-split-grid` / `.resume-split-pane` layout rules plus split-scoped sheet typography. The narrow pane stacks the resume header (`flex-direction: column`) and pins the candidate name to `white-space: nowrap`, because the unchanged 32px name wrapped onto two lines at pane width.
+- Why: the Rendered tab renders `# Name` through MarkdownRenderer's header branch while the editor showed the same string in a small textarea, so switching modes made the name and header appear to disappear. No data change was needed - both views already read the same buffer.
+- Note: the split pane scales the sheet type down rather than scaling the whole page, so the PDF layout still comes from the server-side A4 stylesheet and cannot drift from what is edited.
+
+- Follow-up (option A): the split-only header overrides from the entry above were promoted to the base sheet rules and the mode-specific duplicates deleted, so the rendered tab, the split panes and the editor surface all share one header. `.resume-header-top` is always a column, `.resume-candidate-name` is `white-space: nowrap` at `clamp(21px, 3.9cqi, 30px)`, the contact block is left-aligned, and `.resume-view-container` / `.resume-split-pane` are `container-type: inline-size` so `cqi` sizes track the available width instead of the view mode. `.resume-contact-row` uses `text-wrap: pretty` because the bullet separator was landing at the end of a wrapped line.

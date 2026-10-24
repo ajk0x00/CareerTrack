@@ -49,7 +49,7 @@ export default function ResumeCanvas({
   isLoadingDraft = false,
   loadError = null,
 }: ResumeCanvasProps) {
-  const [activeTab, setActiveTab] = useState<'rendered' | 'markdown'>('rendered')
+  const [activeTab, setActiveTab] = useState<'rendered' | 'split' | 'markdown'>('rendered')
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false)
 
   const handleDownloadDOCX = () => {
@@ -62,6 +62,38 @@ export default function ResumeCanvas({
     atsReport && atsReport.keyword_coverage !== null
       ? formatCoveragePercent(atsReport.keyword_coverage)
       : null
+
+  const renderedResumeElement = (
+    <RenderedResume
+      markdown={markdownContent}
+      userName={userName}
+      roleTitle={roleTitle}
+      company={company}
+      experiences={experiences}
+      categories={categories}
+    />
+  )
+
+  const emptyCanvasState = (
+    <div className="resume-canvas-state">
+      <span className="material-symbols-outlined resume-canvas-state-icon">
+        description
+      </span>
+      <p className="resume-canvas-state-title">No resume content yet</p>
+      <p className="resume-canvas-state-body">
+        Rebuild the draft from your career data, or upload an existing resume to
+        populate this canvas.
+      </p>
+    </div>
+  )
+
+  const markdownEditorElement = (
+    <MarkdownEditor
+      markdown={markdownContent}
+      onChange={onMarkdownChange}
+      onCopy={onCopyMarkdown}
+    />
+  )
 
   return (
     <section className="resume-canvas-area">
@@ -99,6 +131,16 @@ export default function ResumeCanvas({
               aria-label="Rendered Preview"
             >
               <span className="material-symbols-outlined segment-icon">visibility</span>
+            </button>
+
+            <button
+              type="button"
+              className={`segment-btn ${activeTab === 'split' ? 'active' : ''}`}
+              onClick={() => setActiveTab('split')}
+              title="Split editor and preview"
+              aria-label="Split editor and preview"
+            >
+              <span className="material-symbols-outlined segment-icon">splitscreen</span>
             </button>
 
             <button
@@ -186,7 +228,11 @@ export default function ResumeCanvas({
 
       {/* Main Resume Sheet Container */}
       <div className="resume-sheet-wrapper">
-        <div className={`resume-view-container ${highlightFlash ? 'flash-ring' : ''}`}>
+        <div
+          className={`resume-view-container ${highlightFlash ? 'flash-ring' : ''}${
+            activeTab === 'split' ? ' resume-view-container-split' : ''
+          }`}
+        >
           {/* ATS Verification Banner (rendered only from a real ATS report) */}
           {!isLoadingDraft && !showLoadError && atsReport && (
             <div className="ats-notice-box">
@@ -244,33 +290,16 @@ export default function ResumeCanvas({
               <p className="resume-canvas-state-body">{loadError}</p>
             </div>
           ) : activeTab === 'rendered' ? (
-            hasContent ? (
-              <RenderedResume
-                markdown={markdownContent}
-                userName={userName}
-                roleTitle={roleTitle}
-                company={company}
-                experiences={experiences}
-                categories={categories}
-              />
-            ) : (
-              <div className="resume-canvas-state">
-                <span className="material-symbols-outlined resume-canvas-state-icon">
-                  description
-                </span>
-                <p className="resume-canvas-state-title">No resume content yet</p>
-                <p className="resume-canvas-state-body">
-                  Rebuild the draft from your career data, or upload an existing resume to
-                  populate this canvas.
-                </p>
+            hasContent ? renderedResumeElement : emptyCanvasState
+          ) : activeTab === 'split' ? (
+            <div className="resume-split-grid">
+              <div className="resume-split-pane">{markdownEditorElement}</div>
+              <div className="resume-split-pane">
+                {hasContent ? renderedResumeElement : emptyCanvasState}
               </div>
-            )
+            </div>
           ) : (
-            <MarkdownEditor
-              markdown={markdownContent}
-              onChange={onMarkdownChange}
-              onCopy={onCopyMarkdown}
-            />
+            markdownEditorElement
           )}
         </div>
       </div>
