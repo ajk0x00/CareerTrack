@@ -10,8 +10,9 @@ Exposes tools for:
 """
 
 from datetime import date
-from typing import Any
+from typing import Annotated, Any
 
+from pydantic import Field
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from sqlalchemy import func, select
@@ -313,35 +314,127 @@ def register_tools(server: MCPServer) -> None:
         name="add_job",
         description=(
             "Add a new job posting to the user's career pipeline. Requires title and company_name. "
-            "Supports optional description (used for ATS tailoring), requirements, salary range, "
-            "location, workplace_type (remote, hybrid, on_site), employment_type, and status (saved, applied, interviewing, offer)."
+            "CRITICAL REQUIREMENT: You MUST provide ALL the content of the job posting as it is into 'description' and 'requirements'. "
+            "Do NOT summarize, condense, abbreviate, or truncate the posting text! CareerTrack uses the exact, complete, unabridged "
+            "job description to display the full posting in the pipeline card viewer and to tailor ATS-friendly resumes against it."
         ),
     )
     async def add_job(
-        title: str,
-        company_name: str,
-        status: str = "saved",
-        job_url: str | None = None,
-        location: str | None = None,
-        workplace_type: str | None = None,
-        employment_type: str | None = None,
-        department: str | None = None,
-        description: str | None = None,
-        requirements: str | None = None,
-        salary_min: float | None = None,
-        salary_max: float | None = None,
-        salary_currency: str = "USD",
-        salary_interval: str | None = "yearly",
-        posted_date: str | None = None,
-        deadline_date: str | None = None,
-        current_stage: str | None = None,
-        applied_date: str | None = None,
-        excitement_rating: int | None = None,
-        notes: str | None = None,
-        contact_name: str | None = None,
-        contact_email: str | None = None,
-        contact_phone: str | None = None,
-        auth_token: str | None = None,
+        title: Annotated[
+            str,
+            Field(description="Job title or role exactly as specified in the job posting (e.g. 'Software Engineer 1, Applied AI')"),
+        ],
+        company_name: Annotated[
+            str,
+            Field(description="Company offering the position (e.g. 'Interview Kickstart')"),
+        ],
+        status: Annotated[
+            str,
+            Field(
+                default="saved",
+                description="Pipeline stage: 'saved' (default), 'applied', 'interviewing', or 'offer'",
+            ),
+        ] = "saved",
+        job_url: Annotated[
+            str | None,
+            Field(default=None, description="Direct URL link to the original job posting or application page"),
+        ] = None,
+        location: Annotated[
+            str | None,
+            Field(default=None, description="Job location (e.g. 'Remote', 'San Francisco, CA', 'Bengaluru, India')"),
+        ] = None,
+        workplace_type: Annotated[
+            str | None,
+            Field(default=None, description="Workplace policy: 'remote', 'hybrid', or 'on_site'"),
+        ] = None,
+        employment_type: Annotated[
+            str | None,
+            Field(default=None, description="Employment type: 'full_time', 'part_time', 'contract', or 'internship'"),
+        ] = None,
+        department: Annotated[
+            str | None,
+            Field(default=None, description="Department or team within the company"),
+        ] = None,
+        description: Annotated[
+            str | None,
+            Field(
+                default=None,
+                description=(
+                    "CRITICAL: The ENTIRE, complete, verbatim text of the job description as published in the posting. "
+                    "Do NOT summarize, condense, or truncate! Include all sections: About the company, Role Overview, "
+                    "Responsibilities, Day-to-Day tasks, and Team details. The exact full text is displayed in the user's pipeline card modal."
+                ),
+            ),
+        ] = None,
+        requirements: Annotated[
+            str | None,
+            Field(
+                default=None,
+                description=(
+                    "The ENTIRE, complete requirements and qualifications section as written in the posting. "
+                    "Do NOT summarize! Include minimum qualifications, preferred skills, required tech stack, and experience."
+                ),
+            ),
+        ] = None,
+        salary_min: Annotated[
+            float | None,
+            Field(default=None, description="Minimum compensation figure if stated in the posting"),
+        ] = None,
+        salary_max: Annotated[
+            float | None,
+            Field(default=None, description="Maximum compensation figure if stated in the posting"),
+        ] = None,
+        salary_currency: Annotated[
+            str,
+            Field(default="USD", description="Currency code (USD, EUR, GBP, INR, etc.)"),
+        ] = "USD",
+        salary_interval: Annotated[
+            str | None,
+            Field(default="yearly", description="Compensation frequency: 'yearly', 'monthly', or 'hourly'"),
+        ] = "yearly",
+        posted_date: Annotated[
+            str | None,
+            Field(default=None, description="Date job was posted in YYYY-MM-DD format"),
+        ] = None,
+        deadline_date: Annotated[
+            str | None,
+            Field(default=None, description="Application deadline date in YYYY-MM-DD format"),
+        ] = None,
+        current_stage: Annotated[
+            str | None,
+            Field(default=None, description="Specific interview stage if active (e.g. 'Technical Screen', 'Take-Home')"),
+        ] = None,
+        applied_date: Annotated[
+            str | None,
+            Field(default=None, description="Date application was submitted in YYYY-MM-DD format"),
+        ] = None,
+        excitement_rating: Annotated[
+            int | None,
+            Field(default=None, description="Priority rating from 1 to 5"),
+        ] = None,
+        notes: Annotated[
+            str | None,
+            Field(
+                default=None,
+                description="Private notes, compensation estimates, interview prep thoughts, or company intel (separate from job description).",
+            ),
+        ] = None,
+        contact_name: Annotated[
+            str | None,
+            Field(default=None, description="Recruiter or hiring manager name"),
+        ] = None,
+        contact_email: Annotated[
+            str | None,
+            Field(default=None, description="Recruiter or contact email address"),
+        ] = None,
+        contact_phone: Annotated[
+            str | None,
+            Field(default=None, description="Recruiter or contact phone number"),
+        ] = None,
+        auth_token: Annotated[
+            str | None,
+            Field(default=None, description="Optional JWT authentication token if not using session auth"),
+        ] = None,
         ctx: Context | None = None,
     ) -> dict[str, Any]:
         clean_title = title.strip()

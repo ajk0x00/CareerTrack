@@ -42,7 +42,9 @@ def create_mcp_server() -> MCPServer:
         title="CareerTrack MCP Server",
         description=(
             "Exposes user profile (name, location, socials), skills, career preferences, employment history, "
-            "work accomplishments, and target job creation for AI assistants and resume builders."
+            "work accomplishments, and target job creation for AI assistants and resume builders. "
+            "When adding opportunities via add_job, the connected agent MUST provide the ENTIRE, complete, unabridged "
+            "content of the job posting as it is into 'description' and 'requirements' (do not summarize or truncate)."
         ),
         version="0.1.0",
         token_verifier=CareerTrackTokenVerifier(),
