@@ -25,6 +25,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# Install OS libraries required by WeasyPrint (Pango) and ATS-safe fonts
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        libpangoft2-1.0-0 \
+        libpangocairo-1.0-0 \
+        fonts-liberation && \
+    rm -rf /var/lib/apt/lists/*
+
 # Create non-root user and group
 RUN groupadd -g 10001 appgroup && \
     useradd -u 10001 -g appgroup -s /sbin/nologin -d /app appuser
