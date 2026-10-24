@@ -393,16 +393,18 @@ export default function JobModal({
               />
             </div>
 
-            {/* Job Description (Optional) */}
+            {/* Job Description */}
             <div className="form-group-compact">
-              <div className="flex-between">
-                <label className="compact-label">Job Description (JD)</label>
-                <span className="highlight-tag">For Resume Tailoring</span>
+              <div className="flex-between" style={{ marginBottom: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <label className="compact-label" style={{ margin: 0 }}>Exact Job Description</label>
+                  <span className="highlight-tag">For Resume Tailoring</span>
+                </div>
               </div>
               <textarea
                 className="compact-textarea"
-                rows={3}
-                placeholder="Paste the requirements or responsibilities to tailor against..."
+                rows={6}
+                placeholder="Full job description, responsibilities, and requirements from the requisition..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />

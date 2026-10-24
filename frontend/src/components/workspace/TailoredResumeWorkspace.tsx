@@ -204,18 +204,70 @@ export default function TailoredResumeWorkspace({
   )
   const qCompany = searchParams.get('company')
   const qRole = searchParams.get('role')
+  const qJobId = searchParams.get('jobId')
 
   const [company, setCompany] = useState<string>(() => qCompany || 'Stripe, Inc.')
   const [roleTitle, setRoleTitle] = useState<string>(() => qRole || 'Staff Product Engineer')
-  const [prevParams, setPrevParams] = useState({ company: qCompany, role: qRole })
+  const [prevParams, setPrevParams] = useState({ company: qCompany, role: qRole, jobId: qJobId })
 
-  if (prevParams.company !== qCompany || prevParams.role !== qRole) {
-    setPrevParams({ company: qCompany, role: qRole })
+  if (
+    prevParams.company !== qCompany ||
+    prevParams.role !== qRole ||
+    prevParams.jobId !== qJobId
+  ) {
+    setPrevParams({ company: qCompany, role: qRole, jobId: qJobId })
     if (qCompany) setCompany(qCompany)
     if (qRole) setRoleTitle(qRole)
   }
 
   const [jobDescription, setJobDescription] = useState<string>(DEFAULT_SAMPLE_JD)
+
+  // Fetch full job description if jobId query parameter is passed
+  useEffect(() => {
+    if (!qJobId) return
+
+    const token =
+      localStorage.getItem('careerTrack_token') ||
+      sessionStorage.getItem('careerTrack_token') ||
+      ''
+
+    if (!token) return
+
+    let isMounted = true
+    fetch(`/api/v1/jobs/${qJobId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load target job')
+        return res.json()
+      })
+      .then((job) => {
+        if (!isMounted) return
+        if (job.company_name) setCompany(job.company_name)
+        if (job.title) setRoleTitle(job.title)
+        if (job.description) {
+          const fullPosting =
+            job.description +
+            (job.requirements
+              ? `\n\nKey Requirements & Qualifications:\n${job.requirements}`
+              : '')
+          setJobDescription(fullPosting)
+          toast.success(
+            `Loaded exact job posting for ${job.title} at ${job.company_name}`,
+            'Target Job Loaded'
+          )
+        }
+      })
+      .catch(() => {
+        // Fallback gracefully to default or URL params
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [qJobId, toast])
   const [markdownContent, setMarkdownContent] = useState<string>(DEFAULT_MARKDOWN)
   const [experiences, setExperiences] = useState<ExperienceItem[]>(INITIAL_EXPERIENCES)
   const [categories, setCategories] = useState<SkillCategory[]>(INITIAL_SKILLS)

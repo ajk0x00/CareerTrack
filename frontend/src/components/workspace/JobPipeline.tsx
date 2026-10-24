@@ -8,6 +8,7 @@ import SettingsModal from './SettingsModal'
 import ExperienceModal from './ExperienceModal'
 import SkillsModal from './SkillsModal'
 import JobModal from './JobModal'
+import JobDetailModal from './JobDetailModal'
 import type {
   ExperienceItem,
   JobItem,
@@ -41,6 +42,9 @@ export default function JobPipeline() {
   const [editingJob, setEditingJob] = useState<JobItem | null>(null)
   const [initialStageForModal, setInitialStageForModal] = useState<JobStatus>('saved')
   const [deletingJobId, setDeletingJobId] = useState<number | null>(null)
+
+  // Job Posting Exact Detail Modal State
+  const [selectedJobForDetail, setSelectedJobForDetail] = useState<JobItem | null>(null)
 
   // Sub-Modals
   const [activeModal, setActiveModal] = useState<'experience' | 'skills' | 'settings' | null>(null)
@@ -194,12 +198,13 @@ export default function JobPipeline() {
       }
       return [saved, ...prev]
     })
+    setSelectedJobForDetail((prev) => (prev && prev.id === saved.id ? saved : prev))
   }
 
   // Navigate to workspace to tailor resume
-  const handleTailorResume = (company: string, role: string) => {
+  const handleTailorResume = (job: JobItem) => {
     navigate(
-      `/?company=${encodeURIComponent(company)}&role=${encodeURIComponent(role)}`
+      `/?jobId=${job.id}&company=${encodeURIComponent(job.company_name)}&role=${encodeURIComponent(job.title)}`
     )
   }
 
@@ -409,32 +414,53 @@ export default function JobPipeline() {
                       const locationText = formatLocation(job)
 
                       return (
-                        <div key={job.id} className="pipeline-job-card">
+                        <div
+                          key={job.id}
+                          className="pipeline-job-card"
+                          onClick={() => setSelectedJobForDetail(job)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              setSelectedJobForDetail(job)
+                            }
+                          }}
+                          title="Click to view exact job posting"
+                        >
                           <div className="pipeline-card-top">
                             <div className="pipeline-company-logo">
                               {job.company_name.charAt(0).toUpperCase()}
                             </div>
-                            {job.excitement_rating ? (
-                              <div
-                                className="pipeline-match-badge"
-                                title={`Priority: ${job.excitement_rating}/5`}
-                              >
-                                <span>{'★'.repeat(job.excitement_rating)}</span>
-                              </div>
-                            ) : job.current_stage ? (
-                              <div
-                                className="pipeline-match-badge"
-                                title="Current Interview Stage"
-                              >
-                                <span
-                                  className="material-symbols-outlined"
-                                  style={{ fontSize: '12px' }}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              {job.excitement_rating ? (
+                                <div
+                                  className="pipeline-match-badge"
+                                  title={`Priority: ${job.excitement_rating}/5`}
                                 >
-                                  flag
-                                </span>
-                                <span>{job.current_stage}</span>
-                              </div>
-                            ) : null}
+                                  <span>{'★'.repeat(job.excitement_rating)}</span>
+                                </div>
+                              ) : job.current_stage ? (
+                                <div
+                                  className="pipeline-match-badge"
+                                  title="Current Interview Stage"
+                                >
+                                  <span
+                                    className="material-symbols-outlined"
+                                    style={{ fontSize: '12px' }}
+                                  >
+                                    flag
+                                  </span>
+                                  <span>{job.current_stage}</span>
+                                </div>
+                              ) : null}
+                              <span
+                                className="material-symbols-outlined pipeline-card-expand-icon"
+                                title="View exact job posting"
+                              >
+                                open_in_full
+                              </span>
+                            </div>
                           </div>
 
                           <div className="pipeline-card-title">{job.title}</div>
@@ -477,6 +503,7 @@ export default function JobPipeline() {
                             <select
                               className="pipeline-stage-select"
                               value={job.status}
+                              onClick={(e) => e.stopPropagation()}
                               onChange={(e) =>
                                 handleMoveStage(
                                   job.id,
@@ -497,7 +524,10 @@ export default function JobPipeline() {
                               <button
                                 type="button"
                                 className="action-icon-btn"
-                                onClick={() => handleOpenEditModal(job)}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleOpenEditModal(job)
+                                }}
                                 title="Edit opportunity"
                                 aria-label="Edit opportunity"
                               >
@@ -511,7 +541,10 @@ export default function JobPipeline() {
                               <button
                                 type="button"
                                 className="action-icon-btn error"
-                                onClick={() => handleDeleteJob(job)}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDeleteJob(job)
+                                }}
                                 disabled={deletingJobId === job.id}
                                 title="Remove opportunity"
                                 aria-label="Remove opportunity"
@@ -526,12 +559,10 @@ export default function JobPipeline() {
                               <button
                                 type="button"
                                 className="pipeline-tailor-btn"
-                                onClick={() =>
-                                  handleTailorResume(
-                                    job.company_name,
-                                    job.title
-                                  )
-                                }
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleTailorResume(job)
+                                }}
                                 title="Tailor resume against this role"
                               >
                                 <span
@@ -586,6 +617,25 @@ export default function JobPipeline() {
           onSaved={handleSavedJob}
           editingJob={editingJob}
           initialStatus={initialStageForModal}
+        />
+      )}
+
+      {/* Exact Job Posting Detail Modal */}
+      {selectedJobForDetail && (
+        <JobDetailModal
+          job={selectedJobForDetail}
+          isOpen={Boolean(selectedJobForDetail)}
+          onClose={() => setSelectedJobForDetail(null)}
+          onEdit={(job) => {
+            handleOpenEditModal(job)
+          }}
+          onTailor={(job) => {
+            handleTailorResume(job)
+          }}
+          onJobUpdated={(updated) => {
+            handleSavedJob(updated)
+            setSelectedJobForDetail(updated)
+          }}
         />
       )}
 
