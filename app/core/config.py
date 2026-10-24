@@ -94,6 +94,13 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
 
+    # Job Lifecycle Maintenance
+    JOB_EXPIRY_DAYS: int = 10
+    JOB_PURGE_DAYS: int = 40
+    JOB_MAINTENANCE_ENABLED: bool = True
+    JOB_MAINTENANCE_HOUR: int = 3
+    JOB_MAINTENANCE_TZ: str = "UTC"
+
     # LLM Settings
     LLM_API_KEY: str = ""
     LLM_BASE_URL: str = "https://api.fireworks.ai/inference/v1"

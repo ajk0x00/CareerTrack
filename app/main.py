@@ -15,6 +15,7 @@ from app.core.config import get_settings
 from app.core.database import close_db_connection
 from app.core.logging import setup_logging
 from app.mcp.server import create_mcp_asgi_app
+from app.services.scheduler import shutdown_scheduler, start_scheduler
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +38,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     from app.mcp.server import mcp_lifespan
 
     async with mcp_lifespan():
+        start_scheduler()
         yield
 
     logger.info("Shutting down %s", settings.PROJECT_NAME)
+    shutdown_scheduler()
     await close_db_connection()
 
 
