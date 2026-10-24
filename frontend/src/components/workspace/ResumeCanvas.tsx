@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { ExperienceItem, SkillCategory } from '../../types/workspace'
+import type { AtsReport } from '../../types/resume'
 import RenderedResume from './RenderedResume'
 import MarkdownEditor from './MarkdownEditor'
 import ResumeUploadModal from './ResumeUploadModal'
@@ -14,6 +15,19 @@ interface ResumeCanvasProps {
   onMarkdownChange: (val: string) => void
   onCopyMarkdown: () => void
   highlightFlash: boolean
+  onSave?: () => void
+  onDownload?: () => void
+  isSaving?: boolean
+  isDownloading?: boolean
+  isDirty?: boolean
+  atsReport?: AtsReport | null
+  isLoadingDraft?: boolean
+  loadError?: string | null
+}
+
+function formatCoveragePercent(coverage: number): string {
+  const percent = (coverage * 100).toFixed(1)
+  return `${percent.endsWith('.0') ? percent.slice(0, -2) : percent}%`
 }
 
 export default function ResumeCanvas({
@@ -26,17 +40,28 @@ export default function ResumeCanvas({
   onMarkdownChange,
   onCopyMarkdown,
   highlightFlash,
+  onSave,
+  onDownload,
+  isSaving = false,
+  isDownloading = false,
+  isDirty = false,
+  atsReport = null,
+  isLoadingDraft = false,
+  loadError = null,
 }: ResumeCanvasProps) {
   const [activeTab, setActiveTab] = useState<'rendered' | 'markdown'>('rendered')
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false)
 
-  const handleExportPDF = () => {
-    window.print()
-  }
-
   const handleDownloadDOCX = () => {
     alert('Exporting ATS-optimized DOCX document formatted for enterprise screening engines.')
   }
+
+  const hasContent = markdownContent.trim().length > 0
+  const showLoadError = Boolean(loadError) && !hasContent
+  const coverageLabel =
+    atsReport && atsReport.keyword_coverage !== null
+      ? formatCoveragePercent(atsReport.keyword_coverage)
+      : null
 
   return (
     <section className="resume-canvas-area">
@@ -50,11 +75,15 @@ export default function ResumeCanvas({
           </div>
           <div className="doc-meta-row">
             <span className="doc-timestamp">Last synthesized: Just now</span>
-            <span>•</span>
-            <span className="ats-score-pill">
-              <span className="ats-score-dot"></span>
-              ATS Score: 98% Match
-            </span>
+            {coverageLabel && (
+              <>
+                <span>•</span>
+                <span className="ats-score-pill">
+                  <span className="ats-score-dot"></span>
+                  ATS Coverage: {coverageLabel}
+                </span>
+              </>
+            )}
           </div>
         </div>
 
@@ -85,6 +114,39 @@ export default function ResumeCanvas({
 
           {/* Action Buttons */}
           <div className="canvas-buttons-group">
+            {isDirty && (
+              <span className="canvas-dirty-badge" title="Edits are saved when you press Save or Download PDF">
+                Unsaved changes
+              </span>
+            )}
+            <button
+              type="button"
+              className="btn-canvas-primary"
+              onClick={onSave}
+              disabled={!onSave || !hasContent || isSaving || isLoadingDraft}
+              title="Save this resume to your career data"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                {isSaving ? 'hourglass_top' : 'save'}
+              </span>
+              <span>{isSaving ? 'Saving...' : 'Save'}</span>
+            </button>
+
+            <button
+              type="button"
+              className="btn-canvas-secondary"
+              onClick={onDownload}
+              disabled={!onDownload || !hasContent || isDownloading || isLoadingDraft}
+              title="Download the ATS-safe PDF for this resume (unsaved edits are saved first)"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                {isDownloading ? 'hourglass_top' : 'picture_as_pdf'}
+              </span>
+              <span className="hide-mobile">
+                {isDownloading ? 'Downloading...' : 'Download PDF'}
+              </span>
+            </button>
+
             <button
               type="button"
               className="btn-canvas-secondary"
@@ -110,18 +172,6 @@ export default function ResumeCanvas({
 
             <button
               type="button"
-              className="btn-canvas-secondary"
-              onClick={handleExportPDF}
-              title="Export PDF Document"
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
-                picture_as_pdf
-              </span>
-              <span className="hide-mobile">Export PDF</span>
-            </button>
-
-            <button
-              type="button"
               className="btn-canvas-primary"
               onClick={handleDownloadDOCX}
             >
@@ -137,39 +187,84 @@ export default function ResumeCanvas({
       {/* Main Resume Sheet Container */}
       <div className="resume-sheet-wrapper">
         <div className={`resume-view-container ${highlightFlash ? 'flash-ring' : ''}`}>
-          {/* ATS Context Notification Banner */}
-          <div className="ats-notice-box">
-            <div className="ats-notice-left">
-              <div className="ats-notice-icon">
-                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
-                  auto_awesome
+          {/* ATS Verification Banner (rendered only from a real ATS report) */}
+          {!isLoadingDraft && !showLoadError && atsReport && (
+            <div className="ats-notice-box">
+              <div className="ats-notice-left">
+                <div
+                  className={`ats-notice-icon ${atsReport.parse_clean ? '' : 'warning'}`}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                    {atsReport.parse_clean ? 'verified' : 'warning'}
+                  </span>
+                </div>
+                <div>
+                  <p className="ats-notice-title">
+                    {atsReport.parse_clean
+                      ? 'Parses cleanly'
+                      : `${atsReport.missing_tokens.length} token${
+                          atsReport.missing_tokens.length === 1 ? '' : 's'
+                        } could not be verified`}
+                  </p>
+                  <p className="ats-notice-body">
+                    {atsReport.page_count}{' '}
+                    {atsReport.page_count === 1 ? 'page' : 'pages'} •{' '}
+                    {atsReport.char_count.toLocaleString()} characters
+                    {atsReport.sections_found.length > 0
+                      ? ` • ${atsReport.sections_found.length} sections detected`
+                      : ''}
+                  </p>
+                </div>
+              </div>
+
+              <div className="ats-notice-badges">
+                {coverageLabel && (
+                  <span className="stat-pill primary">{coverageLabel} keyword coverage</span>
+                )}
+                <span
+                  className={`stat-pill ${atsReport.parse_clean ? 'success' : 'danger'}`}
+                >
+                  {atsReport.parse_clean ? 'PDF verified' : 'Needs review'}
                 </span>
               </div>
-              <div>
-                <p className="ats-notice-title">
-                  Requisition High-Affinity Tailoring Applied
-                </p>
-                <p className="ats-notice-body">
-                  14 metrics from your {company} &amp; verified roles were weighted. 9 keyword patterns seamlessly integrated into bullet hierarchies.
+            </div>
+          )}
+
+          {isLoadingDraft ? (
+            <div className="resume-canvas-state">
+              <div className="pref-loading-spinner" />
+              <span>Loading resume from your career data...</span>
+            </div>
+          ) : showLoadError ? (
+            <div className="resume-canvas-state error">
+              <span className="material-symbols-outlined resume-canvas-state-icon">
+                error
+              </span>
+              <p className="resume-canvas-state-title">Could not load your resume</p>
+              <p className="resume-canvas-state-body">{loadError}</p>
+            </div>
+          ) : activeTab === 'rendered' ? (
+            hasContent ? (
+              <RenderedResume
+                markdown={markdownContent}
+                userName={userName}
+                roleTitle={roleTitle}
+                company={company}
+                experiences={experiences}
+                categories={categories}
+              />
+            ) : (
+              <div className="resume-canvas-state">
+                <span className="material-symbols-outlined resume-canvas-state-icon">
+                  description
+                </span>
+                <p className="resume-canvas-state-title">No resume content yet</p>
+                <p className="resume-canvas-state-body">
+                  Rebuild the draft from your career data, or upload an existing resume to
+                  populate this canvas.
                 </p>
               </div>
-            </div>
-
-            <div className="ats-notice-badges">
-              <span className="stat-pill success">99.2% Parse Rate</span>
-              <span className="stat-pill primary">0 Format Errors</span>
-            </div>
-          </div>
-
-          {activeTab === 'rendered' ? (
-            <RenderedResume
-              markdown={markdownContent}
-              userName={userName}
-              roleTitle={roleTitle}
-              company={company}
-              experiences={experiences}
-              categories={categories}
-            />
+            )
           ) : (
             <MarkdownEditor
               markdown={markdownContent}

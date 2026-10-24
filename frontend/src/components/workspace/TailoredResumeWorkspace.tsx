@@ -3,11 +3,22 @@ import { useNavigate, useLocation, useParams, useSearchParams } from 'react-rout
 import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../ToastContext'
 import type { User } from '../../types/auth'
+import type { AtsReport } from '../../types/resume'
 import type {
   ExperienceItem,
   SkillCategory,
   UserPreferences,
 } from '../../types/workspace'
+import {
+  ApiError,
+  createResume,
+  exportResume,
+  getAtsReport,
+  getResume,
+  getResumeDraft,
+  listResumes,
+  updateResume,
+} from '../../api/resumes'
 import type { SettingsTabId } from './settings'
 import WorkspaceNavbar from './WorkspaceNavbar'
 import JobDescriptionPanel from './JobDescriptionPanel'
@@ -21,6 +32,12 @@ interface TailoredResumeWorkspaceProps {
   user?: User
   onLogout?: () => void
   initialModal?: 'experience' | 'skills' | 'settings' | null
+}
+
+function toErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof ApiError) return error.detail
+  if (error instanceof Error && error.message) return error.message
+  return fallback
 }
 
 
@@ -42,138 +59,6 @@ Minimum Qualifications:
 • Deep familiarity with relational databases (PostgreSQL), distributed caching (Redis), and event streaming (Kafka).
 • Demonstrated track record taking zero-to-one product initiatives to massive market scale.`
 
-const DEFAULT_MARKDOWN = `# ALEX CHEN
-**Staff Full-Stack & Product Infrastructure Engineer**  
-San Francisco, CA • alex.chen@workplace.dev • +1 (415) 890-4412  
-[github.com/alexchen-eng](https://github.com) • [linkedin.com/in/alexchen](https://linkedin.com)
-
----
-
-## PROFESSIONAL SUMMARY
-Staff Product & Distributed Systems Engineer with 8+ years specializing in high-throughput payment architectures, resilient Next.js edge runtimes, and developer infrastructure. Architected multi-currency billing engines transacting **$4.2B+ quarterly** with zero unplanned downtime. Proven collaborator with executive leadership across product direction, regulatory compliance, and distributed team scaling.
-
----
-
-## WORK EXPERIENCE
-
-### Staff Product Engineer • Edge Platform
-**Vercel Inc.** | May 2022 – Present | San Francisco, CA (Remote)
-- Spearheaded the rebuild of the core **Incremental Static Regeneration (ISR) pipeline**, slashing global Edge TTFB by **42%** across 400M+ monthly incoming page executions.
-- Engineered declarative middleware validation layer in **TypeScript and Go**, enabling fine-grained security policies and automated traffic rerouting across multi-region serverless clusters.
-- Collaborated cross-functionally with Design Systems and Product Management to release 12 core Vercel dashboard workflow modules, expanding active enterprise seats by **34% YoY**.
-- Authored zero-downtime deployment strategies and incident runbooks; maintained a pristine **99.999% platform availability** throughout peak traffic surges.
-
-### Senior Full-Stack Engineer • Billing & Subscriptions
-**Stripe** | January 2019 – April 2022 | San Francisco, CA
-- Designed and delivered the automated tax recalculation microservice for Stripe Invoicing, processing **$1.4B+ in monthly recurring transactions** across 48 distinct international regulatory jurisdictions.
-- Migrated mission-critical billing scheduler from legacy polling to distributed **Kafka event streaming and Redis caching**, resolving race conditions and decreasing invoice generation p99 latency from 1.8s to **85ms**.
-- Mentored 6 engineers through promotion cycles; founded the internal Frontend Performance Guild producing shared linting rules, bundle analyzer tooling, and standardized Web Vitals tracking.
-- Directly authored **REST and GraphQL API contracts** implemented by thousands of developer teams worldwide with extensive regression test suites achieving 96% branch coverage.
-
-### Software Engineer II • Trading Systems
-**Coinbase** | August 2017 – December 2018 | San Francisco, CA
-- Constructed resilient WebSocket trading telemetry feeds sustaining sustained loads of **180,000 concurrent client connections** with sub-millisecond dispatch times.
-- Rewrote React institutional order book component with WebAssembly parsing modules, eliminating frame drops during extreme market volatility periods.
-
----
-
-## TECHNICAL COMPETENCIES
-- **Languages & Runtimes:** TypeScript, JavaScript (ESNext), Go, Python, Node.js, SQL, HTML5/CSS3
-- **Frameworks & UI:** React 18+, Next.js App Router, Tailwind CSS, GraphQL, Express, gRPC
-- **Cloud & Data Systems:** PostgreSQL, Redis, Apache Kafka, AWS (ECS, S3, RDS), Docker, Kubernetes, CI/CD
-
----
-
-## EDUCATION
-**University of California, Berkeley**  
-B.S. in Electrical Engineering & Computer Science (EECS) — *Magna Cum Laude*`
-
-const INITIAL_EXPERIENCES: ExperienceItem[] = [
-  {
-    id: 'exp-1',
-    company: 'Vercel Inc.',
-    role: 'Staff Product Engineer • Edge Platform',
-    period: 'May 2022 – Present',
-    location: 'San Francisco, CA (Remote)',
-    description:
-      'Spearheaded rebuild of the core Incremental Static Regeneration (ISR) pipeline across 400M+ monthly page hits. Engineered declarative middleware validation layer in TypeScript and Go with fine-grained routing policies.',
-    bullets: [
-      'Slashing global Edge TTFB by 42% across distributed serverless clusters.',
-      'Expanded active enterprise workflow seats by 34% YoY via 12 core dashboard modules.',
-      'Maintained 99.999% platform availability throughout viral customer releases.',
-    ],
-    metricsCount: 3,
-    skills: ['TypeScript', 'Go', 'Edge Computing'],
-    isCurrent: true,
-  },
-  {
-    id: 'exp-2',
-    company: 'Stripe',
-    role: 'Senior Full-Stack Engineer • Billing & Subscriptions',
-    period: 'Jan 2019 – Apr 2022',
-    location: 'San Francisco, CA',
-    description:
-      'Architected automated tax recalculation microservices processing $1.4B+ monthly transactions. Migrated billing scheduler from legacy polling to distributed Kafka streaming and Redis caching.',
-    bullets: [
-      'Decreased p99 invoice batch latency from 1.8s to 85ms with zero race conditions.',
-      'Mentored 6 engineers through promotion and created internal Frontend Performance Guild.',
-      'Delivered REST & GraphQL contracts with 96% branch coverage.',
-    ],
-    metricsCount: 4,
-    skills: ['Kafka', 'Redis', 'GraphQL', 'PostgreSQL'],
-  },
-  {
-    id: 'exp-3',
-    company: 'Coinbase',
-    role: 'Software Engineer II • Trading Systems',
-    period: 'Aug 2017 – Dec 2018',
-    location: 'San Francisco, CA',
-    description:
-      'Constructed resilient WebSocket trading telemetry feeds sustaining sustained loads of 180,000 concurrent client connections with sub-millisecond dispatch times. Rewrote React institutional order book component with WebAssembly parsing modules.',
-    bullets: [
-      'Engineered sub-millisecond order book dispatch feed with WebAssembly parsing.',
-      'Eliminated frame drops during high-volume trading volatility surges.',
-    ],
-    metricsCount: 2,
-    skills: ['WebSockets', 'React', 'WebAssembly'],
-  },
-]
-
-const INITIAL_SKILLS: SkillCategory[] = [
-  {
-    id: 'cat-1',
-    title: 'Primary Languages & Frameworks',
-    skills: [
-      'TypeScript • 8 yrs',
-      'React / Next.js • 7 yrs',
-      'Node.js • 7 yrs',
-      'Go • 4 yrs',
-      'Python / PyTorch • 3 yrs',
-    ],
-  },
-  {
-    id: 'cat-2',
-    title: 'Cloud & Infrastructure',
-    skills: [
-      'AWS ECS / Lambda',
-      'Kubernetes',
-      'Docker',
-      'PostgreSQL / Prisma',
-      'Kafka & Redis',
-    ],
-  },
-  {
-    id: 'cat-3',
-    title: 'Architecture & Methodologies',
-    skills: [
-      'Distributed Systems',
-      'High-Volume Microservices',
-      'Zero-Downtime Deployment',
-      'GraphQL Federations',
-    ],
-  },
-]
-
 const INITIAL_PREFERENCES: UserPreferences = {
   targetRole: 'Staff / Lead Software Engineer • Full-Stack',
   targetComp: '$220,000 - $265,000',
@@ -186,7 +71,7 @@ export default function TailoredResumeWorkspace({
   onLogout,
   initialModal,
 }: TailoredResumeWorkspaceProps) {
-  const { user: authUser, logout: authLogout, updateUser } = useAuth()
+  const { user: authUser, token: authToken, logout: authLogout, updateUser } = useAuth()
   const activeUser = user || authUser
   const handleLogout = onLogout || authLogout
 
@@ -195,6 +80,12 @@ export default function TailoredResumeWorkspace({
   const location = useLocation()
   const { tab } = useParams<{ tab?: string }>()
   const [searchParams] = useSearchParams()
+
+  const token =
+    authToken ||
+    localStorage.getItem('careerTrack_token') ||
+    sessionStorage.getItem('careerTrack_token') ||
+    ''
 
   const [profileOverride, setProfileOverride] = useState<User | null>(null)
   const currentUser = profileOverride || activeUser
@@ -205,6 +96,8 @@ export default function TailoredResumeWorkspace({
   const qCompany = searchParams.get('company')
   const qRole = searchParams.get('role')
   const qJobId = searchParams.get('jobId')
+  const jobId: number | null =
+    qJobId !== null && /^\d+$/.test(qJobId) ? Number(qJobId) : null
 
   const [company, setCompany] = useState<string>(() => qCompany || 'Stripe, Inc.')
   const [roleTitle, setRoleTitle] = useState<string>(() => qRole || 'Staff Product Engineer')
@@ -224,14 +117,7 @@ export default function TailoredResumeWorkspace({
 
   // Fetch full job description if jobId query parameter is passed
   useEffect(() => {
-    if (!qJobId) return
-
-    const token =
-      localStorage.getItem('careerTrack_token') ||
-      sessionStorage.getItem('careerTrack_token') ||
-      ''
-
-    if (!token) return
+    if (!qJobId || !token) return
 
     let isMounted = true
     fetch(`/api/v1/jobs/${qJobId}`, {
@@ -267,11 +153,106 @@ export default function TailoredResumeWorkspace({
     return () => {
       isMounted = false
     }
-  }, [qJobId, toast])
-  const [markdownContent, setMarkdownContent] = useState<string>(DEFAULT_MARKDOWN)
-  const [experiences, setExperiences] = useState<ExperienceItem[]>(INITIAL_EXPERIENCES)
-  const [categories, setCategories] = useState<SkillCategory[]>(INITIAL_SKILLS)
+  }, [qJobId, token, toast])
+
+  const [markdownContent, setMarkdownContent] = useState<string>('')
+  const [experiences, setExperiences] = useState<ExperienceItem[]>([])
+  const [categories, setCategories] = useState<SkillCategory[]>([])
   const [preferences, setPreferences] = useState<UserPreferences>(INITIAL_PREFERENCES)
+
+  // Persisted resume state for the currently viewed document
+  const [resumeId, setResumeId] = useState<number | null>(null)
+  const [savedMarkdown, setSavedMarkdown] = useState<string>('')
+  const [loadedKey, setLoadedKey] = useState<string | null>(null)
+  const [loadErrorState, setLoadErrorState] = useState<{
+    key: string
+    error: string
+  } | null>(null)
+  const [isSaving, setIsSaving] = useState<boolean>(false)
+  const [isDownloading, setIsDownloading] = useState<boolean>(false)
+  const [atsState, setAtsState] = useState<{
+    resumeId: number
+    report: AtsReport | null
+  } | null>(null)
+  const [atsRefreshKey, setAtsRefreshKey] = useState<number>(0)
+
+  // Which document this view wants, and whether it has finished loading.
+  const loadKey = jobId !== null ? `job-${jobId}` : 'master'
+  const isLoadingResume = Boolean(token) && loadedKey !== loadKey
+  const loadError =
+    loadErrorState && loadErrorState.key === loadKey ? loadErrorState.error : null
+
+  // Only trust an ATS report that belongs to the document currently on screen.
+  const atsReport =
+    atsState && atsState.resumeId === resumeId ? atsState.report : null
+
+  // Resolve the resume that belongs to this view: the job-tailored document when a
+  // jobId is present, otherwise the canonical master resume. Both fall back to the
+  // live draft when nothing has been persisted yet.
+  useEffect(() => {
+    if (!token) return
+
+    let isMounted = true
+
+    const resolveResume = async (): Promise<void> => {
+      try {
+        const resumes = await listResumes(token)
+        const stored =
+          jobId !== null
+            ? resumes.find((item) => item.job_id === jobId)
+            : resumes.find((item) => item.job_id === null)
+
+        if (stored) {
+          const detail = await getResume(token, stored.id)
+          if (!isMounted) return
+          setResumeId(detail.id)
+          setMarkdownContent(detail.markdown)
+          setSavedMarkdown(detail.markdown)
+        } else {
+          const draft = await getResumeDraft(token)
+          if (!isMounted) return
+          setResumeId(null)
+          setMarkdownContent(draft.markdown)
+          setSavedMarkdown(draft.markdown)
+        }
+        setLoadErrorState(null)
+      } catch (error) {
+        if (!isMounted) return
+        const message = toErrorMessage(error, 'Could not load your resume')
+        setLoadErrorState({ key: loadKey, error: message })
+        setResumeId(null)
+        setMarkdownContent('')
+        toast.error(message, 'Resume Load Error')
+      } finally {
+        if (isMounted) setLoadedKey(loadKey)
+      }
+    }
+
+    void resolveResume()
+
+    return () => {
+      isMounted = false
+    }
+  }, [token, jobId, loadKey, toast])
+
+  // Refresh the ATS report whenever a stored resume is on screen or was just saved.
+  useEffect(() => {
+    if (resumeId === null || !token) return
+
+    let isMounted = true
+    getAtsReport(token, resumeId)
+      .then((report) => {
+        if (isMounted) setAtsState({ resumeId, report })
+      })
+      .catch(() => {
+        // A 422 here means the stored markdown cannot be rendered to a PDF yet.
+        if (isMounted) setAtsState({ resumeId, report: null })
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [resumeId, token, atsRefreshKey])
 
   // Route-driven modal state
   const modalFromPath: 'experience' | 'skills' | 'settings' | null =
@@ -300,22 +281,140 @@ export default function TailoredResumeWorkspace({
   const [isGenerating, setIsGenerating] = useState<boolean>(false)
   const [highlightFlash, setHighlightFlash] = useState<boolean>(false)
 
-  // Handle Trigger Resume Generation
-  const handleGenerate = () => {
+  // Rebuild the canvas from the user's live career data
+  const handleGenerate = useCallback(async (): Promise<void> => {
+    if (!token) {
+      toast.error('Sign in again to rebuild your resume draft', 'Not Signed In')
+      return
+    }
+
     setIsGenerating(true)
-    setTimeout(() => {
-      setIsGenerating(false)
+    try {
+      const draft = await getResumeDraft(token)
+      setMarkdownContent(draft.markdown)
+      setLoadErrorState(null)
       setHighlightFlash(true)
-      setTimeout(() => setHighlightFlash(false), 1200)
-    }, 900)
-  }
+      window.setTimeout(() => setHighlightFlash(false), 1200)
+      toast.success('Draft rebuilt from your career data', 'Draft Rebuilt')
+    } catch (error) {
+      toast.error(toErrorMessage(error, 'Could not rebuild your draft'), 'Draft Error')
+    } finally {
+      setIsGenerating(false)
+    }
+  }, [token, toast])
+
+  // Persist the canvas: create on first save, patch on subsequent saves.
+  // Returns the stored resume id so callers (export) can chain off it.
+  const persistResume = useCallback(async (): Promise<number | null> => {
+    if (!token || !markdownContent.trim()) return null
+
+    if (resumeId !== null) {
+      const updated = await updateResume(token, resumeId, { markdown: markdownContent })
+      setSavedMarkdown(updated.markdown)
+      setAtsState(null)
+      setAtsRefreshKey((key) => key + 1)
+      toast.success(`Saved "${updated.title}"`, 'Resume Saved')
+      return updated.id
+    }
+
+    try {
+      const created = await createResume(
+        token,
+        jobId !== null
+          ? { job_id: jobId, markdown: markdownContent }
+          : { markdown: markdownContent }
+      )
+      setResumeId(created.id)
+      setSavedMarkdown(created.markdown)
+      setAtsRefreshKey((key) => key + 1)
+      toast.success(`Saved "${created.title}"`, 'Resume Saved')
+      return created.id
+    } catch (error) {
+      if (jobId !== null || !(error instanceof ApiError) || error.status !== 409) {
+        throw error
+      }
+
+      // A canonical resume already exists: update it instead of creating a second one.
+      const resumes = await listResumes(token)
+      const canonical = resumes.find((item) => item.job_id === null)
+      if (!canonical) throw error
+
+      const updated = await updateResume(token, canonical.id, { markdown: markdownContent })
+      setResumeId(updated.id)
+      setSavedMarkdown(updated.markdown)
+      setAtsRefreshKey((key) => key + 1)
+      toast.success(
+        'Your existing master resume was updated with this markdown',
+        'Master Resume Updated'
+      )
+      return updated.id
+    }
+  }, [token, markdownContent, resumeId, jobId, toast])
+
+  const handleSave = useCallback(async (): Promise<void> => {
+    if (!token) {
+      toast.error('Sign in again to save this resume', 'Not Signed In')
+      return
+    }
+    if (!markdownContent.trim()) {
+      toast.error('There is no resume content to save yet', 'Empty Resume')
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      await persistResume()
+    } catch (error) {
+      toast.error(toErrorMessage(error, 'Could not save this resume'), 'Save Error')
+    } finally {
+      setIsSaving(false)
+    }
+  }, [token, markdownContent, persistResume, toast])
+
+  // Download the server-rendered, ATS-safe PDF. Unsaved edits are persisted first so
+  // the exported file always matches what is on screen.
+  const handleDownload = useCallback(async (): Promise<void> => {
+    if (!token || !markdownContent.trim()) return
+
+    setIsDownloading(true)
+    try {
+      const targetId =
+        resumeId !== null && markdownContent === savedMarkdown
+          ? resumeId
+          : await persistResume()
+      if (targetId === null) {
+        toast.error('Save the resume before exporting it', 'Nothing To Export')
+        return
+      }
+
+      const { blob, fileName } = await exportResume(token, targetId)
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = fileName
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+      toast.success(`Downloaded ${fileName}`, 'PDF Exported')
+    } catch (error) {
+      toast.error(
+        toErrorMessage(error, 'Could not export this resume as a PDF'),
+        'Export Error'
+      )
+    } finally {
+      setIsDownloading(false)
+    }
+  }, [token, markdownContent, resumeId, savedMarkdown, persistResume, toast])
+
+  const isDirty = markdownContent !== savedMarkdown
 
   // Keyboard shortcut listener (Cmd/Ctrl + Enter to generate, Escape to close modals)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault()
-        handleGenerate()
+        void handleGenerate()
       }
       if (e.key === 'Escape') {
         handleCloseModal()
@@ -323,7 +422,7 @@ export default function TailoredResumeWorkspace({
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleCloseModal])
+  }, [handleGenerate, handleCloseModal])
 
   const handleCopyMarkdown = () => {
     navigator.clipboard.writeText(markdownContent)
@@ -376,6 +475,14 @@ export default function TailoredResumeWorkspace({
           onMarkdownChange={setMarkdownContent}
           onCopyMarkdown={handleCopyMarkdown}
           highlightFlash={highlightFlash}
+          onSave={handleSave}
+          onDownload={handleDownload}
+          isSaving={isSaving}
+          isDownloading={isDownloading}
+          isDirty={isDirty}
+          atsReport={atsReport}
+          isLoadingDraft={isLoadingResume}
+          loadError={loadError}
         />
       </main>
 

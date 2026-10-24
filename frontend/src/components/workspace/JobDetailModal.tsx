@@ -1,4 +1,9 @@
+import { useEffect, useState } from 'react'
 import type { JobItem, JobStatus } from '../../types/workspace'
+import type { ResumeSummary } from '../../types/resume'
+import { useAuth } from '../../context/AuthContext'
+import { useToast } from '../ToastContext'
+import { ApiError, exportResume, listResumes } from '../../api/resumes'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 
 interface JobDetailModalProps {
@@ -24,9 +29,97 @@ export default function JobDetailModal({
   onEdit,
   onTailor,
 }: JobDetailModalProps) {
+  const { token: authToken } = useAuth()
+  const toast = useToast()
   useBodyScrollLock(isOpen)
 
+  const token =
+    authToken ||
+    localStorage.getItem('careerTrack_token') ||
+    sessionStorage.getItem('careerTrack_token') ||
+    ''
+
+  const jobId = job?.id ?? null
+
+  const [submittedResumeState, setSubmittedResumeState] = useState<{
+    jobId: number
+    resume: ResumeSummary | null
+    error: string | null
+  } | null>(null)
+  const [isDownloadingSubmittedResume, setIsDownloadingSubmittedResume] =
+    useState<boolean>(false)
+
+  const submittedResume =
+    submittedResumeState && submittedResumeState.jobId === jobId
+      ? submittedResumeState.resume
+      : null
+  const submittedResumeError =
+    submittedResumeState && submittedResumeState.jobId === jobId
+      ? submittedResumeState.error
+      : null
+  const isLoadingSubmittedResume =
+    isOpen && jobId !== null && Boolean(token) && submittedResumeState?.jobId !== jobId
+
+  // Look up the resume already linked to this job, if any
+  useEffect(() => {
+    if (!isOpen || jobId === null || !token) return
+
+    let isMounted = true
+
+    listResumes(token)
+      .then((resumes) => {
+        if (!isMounted) return
+        setSubmittedResumeState({
+          jobId,
+          resume: resumes.find((item) => item.job_id === jobId) ?? null,
+          error: null,
+        })
+      })
+      .catch((error: unknown) => {
+        if (!isMounted) return
+        setSubmittedResumeState({
+          jobId,
+          resume: null,
+          error:
+            error instanceof ApiError
+              ? error.detail
+              : 'Could not load the resume for this job',
+        })
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [isOpen, jobId, token])
+
   if (!isOpen || !job) return null
+
+  const handleDownloadSubmittedResume = async (): Promise<void> => {
+    if (!submittedResume || !token) return
+
+    setIsDownloadingSubmittedResume(true)
+    try {
+      const { blob, fileName } = await exportResume(token, submittedResume.id)
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = fileName
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      URL.revokeObjectURL(url)
+      toast.success(`Downloaded ${fileName}`, 'PDF Exported')
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError
+          ? error.detail
+          : 'Could not export this resume as a PDF',
+        'Export Error'
+      )
+    } finally {
+      setIsDownloadingSubmittedResume(false)
+    }
+  }
 
   const stageInfo = STAGE_LABELS[job.status] || STAGE_LABELS.saved
 
@@ -297,6 +390,61 @@ export default function JobDetailModal({
               </div>
             </section>
           )}
+
+          {/* Submitted Resume Section */}
+          <section className="job-detail-section">
+            <div className="job-detail-section-header">
+              <div className="section-title-wrap">
+                <span className="material-symbols-outlined section-icon">article</span>
+                <h3 className="section-title">Submitted Resume</h3>
+              </div>
+            </div>
+
+            <div className="submitted-resume-card">
+              {isLoadingSubmittedResume ? (
+                <span className="submitted-resume-muted">
+                  Checking for a saved resume...
+                </span>
+              ) : submittedResume ? (
+                <>
+                  <div className="submitted-resume-info">
+                    <span className="submitted-resume-title">{submittedResume.title}</span>
+                    <span className="submitted-resume-meta">
+                      Updated{' '}
+                      {new Date(submittedResume.updated_at).toLocaleDateString(undefined, {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-secondary submitted-resume-download"
+                    onClick={() => {
+                      void handleDownloadSubmittedResume()
+                    }}
+                    disabled={isDownloadingSubmittedResume}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
+                      {isDownloadingSubmittedResume ? 'hourglass_top' : 'download'}
+                    </span>
+                    <span>
+                      {isDownloadingSubmittedResume ? 'Downloading...' : 'Download PDF'}
+                    </span>
+                  </button>
+                </>
+              ) : submittedResumeError ? (
+                <span className="submitted-resume-error">
+                  Could not load the submitted resume: {submittedResumeError}
+                </span>
+              ) : (
+                <span className="submitted-resume-muted">
+                  No resume saved for this job yet
+                </span>
+              )}
+            </div>
+          </section>
 
           {/* Private Notes & Intel Callout */}
           {job.notes && (
