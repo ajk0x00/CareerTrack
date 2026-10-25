@@ -107,7 +107,9 @@ export interface EducationItem {
   id: number
   degree: string
   institution: string
-  cgpa: number
+  description: string
+  start_date: string | null
+  end_date: string | null
   created_at: string
   updated_at: string
 }
@@ -115,7 +117,17 @@ export interface EducationItem {
 export interface EducationCreateInput {
   degree: string
   institution: string
-  cgpa: number
+  description: string
+  start_date: string
+  end_date: string | null
+}
+
+export interface EducationUpdateInput {
+  degree?: string
+  institution?: string
+  description?: string
+  start_date?: string
+  end_date?: string | null
 }
 
 export interface WorkspaceItem {

@@ -7539,6 +7539,31 @@ body {
   align-items: start;
 }
 
+.education-date-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+  margin-top: 14px;
+}
+
+.education-date-input {
+  height: 42px;
+  padding: 0 14px;
+}
+
+.education-field-hint {
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--on-surface-variant);
+  line-height: 1.4;
+}
+
+.education-description-input {
+  min-height: 92px;
+  margin-top: 2px;
+}
+
 .education-records-list {
   display: flex;
   flex-direction: column;
@@ -7547,7 +7572,7 @@ body {
 
 .education-record-card {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 14px;
   padding: 14px 16px;
   background: var(--surface-container-low);
@@ -7584,7 +7609,7 @@ body {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .education-record-degree {
@@ -7596,27 +7621,39 @@ body {
   overflow-wrap: anywhere;
 }
 
-.education-record-institution {
+.education-record-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
   font-size: 13px;
   color: var(--on-surface-variant);
-  margin: 0;
   line-height: 1.4;
   overflow-wrap: anywhere;
 }
 
-.education-cgpa-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
-  border-radius: 20px;
-  background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(16, 185, 129, 0.25);
-  color: #047857;
-  font-size: 11px;
-  font-weight: 700;
+.education-record-institution {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.education-record-meta-separator {
+  color: var(--outline);
+}
+
+.education-record-dates {
+  font-weight: 600;
   white-space: nowrap;
-  flex-shrink: 0;
+}
+
+.education-record-description {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--on-surface-variant);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .education-empty-box {
@@ -7630,15 +7667,15 @@ body {
 }
 
 @media (max-width: 640px) {
+  .education-date-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .education-record-card {
     flex-wrap: wrap;
   }
 
   .education-record-content {
     flex-basis: calc(100% - 54px);
-  }
-
-  .education-cgpa-badge {
-    margin-left: 54px;
   }
 }

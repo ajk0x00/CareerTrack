@@ -32,7 +32,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     id: 'education',
     label: 'Education',
-    sublabel: 'Degrees, institutions & CGPA',
+    sublabel: 'Degrees, institutions & dates',
     icon: 'school',
   },
   {
