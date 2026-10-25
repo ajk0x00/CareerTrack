@@ -1,6 +1,6 @@
 import type { User } from '../../../types/auth'
 
-export type SettingsTabId = 'profile' | 'career' | 'preferences' | 'optimization' | 'integrations' | 'account'
+export type SettingsTabId = 'profile' | 'career' | 'education' | 'preferences' | 'optimization' | 'integrations' | 'account'
 
 interface SettingsSidebarProps {
   activeTab: SettingsTabId
@@ -28,6 +28,12 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Career',
     sublabel: 'Companies worked & timeline',
     icon: 'work_history',
+  },
+  {
+    id: 'education',
+    label: 'Education',
+    sublabel: 'Degrees, institutions & CGPA',
+    icon: 'school',
   },
   {
     id: 'preferences',

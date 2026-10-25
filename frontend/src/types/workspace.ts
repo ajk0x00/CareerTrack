@@ -103,6 +103,21 @@ export interface SkillUpdateInput {
   proficiency?: SkillProficiency
 }
 
+export interface EducationItem {
+  id: number
+  degree: string
+  institution: string
+  cgpa: number
+  created_at: string
+  updated_at: string
+}
+
+export interface EducationCreateInput {
+  degree: string
+  institution: string
+  cgpa: number
+}
+
 export interface WorkspaceItem {
   id: number
   user_id: number

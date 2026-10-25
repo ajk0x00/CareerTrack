@@ -6,6 +6,7 @@ import {
   SettingsSidebar,
   ProfileTab,
   CareerTab,
+  EducationTab,
   PreferencesTab,
   OptimizationTab,
   IntegrationsTab,
@@ -108,6 +109,12 @@ export default function SettingsModal({
 
             {activeTab === 'career' && (
               <CareerTab
+                token={token}
+              />
+            )}
+
+            {activeTab === 'education' && (
+              <EducationTab
                 token={token}
               />
             )}
