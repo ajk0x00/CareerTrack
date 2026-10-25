@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.llm.graph import resume_extraction_graph
 from app.models.company import CompanyWorked
+from app.models.education import Education
 from app.models.experience_log import ExperienceLog
 from app.models.skill import Skill, SkillProficiency
 from app.models.user import User
@@ -188,6 +189,19 @@ class ResumeDraftService:
             joined = ", ".join(sorted(names, key=str.casefold))
             skill_lines.append(f"**{label}:** {joined}")
 
+        education_stmt = (
+            select(Education)
+            .where(Education.user_id == user_id)
+            .order_by(Education.created_at.desc(), Education.id.desc())
+        )
+        education_rows = list((await db.execute(education_stmt)).scalars().all())
+
+        education_lines = [
+            f"- **{education.degree.strip()}, {education.institution.strip()}** "
+            f"(CGPA: {education.cgpa:.2f})"
+            for education in education_rows
+        ]
+
         display_name = ResumeDraftService._display_name(user)
         contact_line = ResumeDraftService._contact_line(user)
 
@@ -200,6 +214,8 @@ class ResumeDraftService:
             sections.append("## Experience\n\n" + "\n\n".join(experience_blocks))
         if skill_lines:
             sections.append("## Skills\n\n" + "\n".join(skill_lines))
+        if education_lines:
+            sections.append("## Education\n\n" + "\n".join(education_lines))
 
         has_profile = bool(
             (user.name or "").strip()
