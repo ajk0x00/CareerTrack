@@ -53,7 +53,9 @@ async def create_education(
         user_id=current_user.id,
         degree=data.degree,
         institution=data.institution,
-        cgpa=data.cgpa,
+        description=data.description,
+        start_date=data.start_date,
+        end_date=data.end_date,
     )
     db.add(education)
     await db.flush()
@@ -92,8 +94,12 @@ async def update_education(
         education.degree = update_data["degree"]
     if "institution" in update_data and update_data["institution"] is not None:
         education.institution = update_data["institution"]
-    if "cgpa" in update_data and update_data["cgpa"] is not None:
-        education.cgpa = update_data["cgpa"]
+    if "description" in update_data and update_data["description"] is not None:
+        education.description = update_data["description"]
+    if "start_date" in update_data and update_data["start_date"] is not None:
+        education.start_date = update_data["start_date"]
+    if "end_date" in update_data:
+        education.end_date = update_data["end_date"]
 
     await db.flush()
     await db.refresh(education)

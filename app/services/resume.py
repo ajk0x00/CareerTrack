@@ -123,6 +123,21 @@ class ResumeDraftService:
             return f"{start} \u2013 Present"
         return f"{start} \u2013 {cls._format_month(company.end_date)}"
 
+    @classmethod
+    def _education_line(cls, education: Education) -> str:
+        """Formats one education row as a single Markdown bullet."""
+        line = f"- **{education.degree.strip()}, {education.institution.strip()}**"
+        if education.start_date is not None:
+            start = cls._format_month(education.start_date)
+            if education.end_date is None:
+                line += f" ({start} \u2013 Present)"
+            else:
+                line += f" ({start} \u2013 {cls._format_month(education.end_date)})"
+        description = education.description.strip()
+        if description:
+            line += f": {description}"
+        return line
+
     @staticmethod
     async def build_draft(user_id: int, db: AsyncSession) -> ResumeDraftResponse:
         """Builds a resume draft from the user's profile, companies, logs, and skills."""
@@ -197,8 +212,7 @@ class ResumeDraftService:
         education_rows = list((await db.execute(education_stmt)).scalars().all())
 
         education_lines = [
-            f"- **{education.degree.strip()}, {education.institution.strip()}** "
-            f"(CGPA: {education.cgpa:.2f})"
+            ResumeDraftService._education_line(education)
             for education in education_rows
         ]
 
