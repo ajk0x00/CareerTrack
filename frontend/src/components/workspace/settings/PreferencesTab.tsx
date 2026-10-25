@@ -1,4 +1,11 @@
 import { useState, useEffect } from 'react'
+import {
+  ApiError,
+  createPreference,
+  deletePreference,
+  listPreferences,
+  updatePreference,
+} from '../../../api/preferences'
 import type {
   PreferenceItem,
   PreferenceImportance,
@@ -9,6 +16,12 @@ import { useToast } from '../../ToastContext'
 
 interface PreferencesTabProps {
   token?: string
+}
+
+function errorMessage(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) return err.detail
+  if (err instanceof Error && err.message) return err.message
+  return fallback
 }
 
 interface PresetSuggestion {
@@ -77,26 +90,14 @@ export default function PreferencesTab({ token: propToken }: PreferencesTabProps
   // Fetch Preferences from Backend
   useEffect(() => {
     let isMounted = true
-    const url =
-      filter === 'all'
-        ? '/api/v1/preferences'
-        : `/api/v1/preferences?importance=${filter}`
 
-    fetch(url, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to load career preferences')
-        return res.json()
-      })
+    listPreferences(token, filter)
       .then((data: PreferenceItem[]) => {
         if (isMounted) setPreferences(data)
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         if (isMounted) {
-          const msg = err instanceof Error ? err.message : 'Error fetching preferences'
+          const msg = errorMessage(err, 'Error fetching preferences')
           toast.error(msg, 'Network Error')
         }
       })
@@ -125,30 +126,15 @@ export default function PreferencesTab({ token: propToken }: PreferencesTabProps
         importance: newImportance,
       }
 
-      const res = await fetch('/api/v1/preferences', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      })
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}))
-        const msg = typeof errData.detail === 'string' ? errData.detail : 'Could not create preference'
-        throw new Error(msg)
-      }
-
-      const createdItem: PreferenceItem = await res.json()
+      const createdItem = await createPreference(token, payload)
       setPreferences((prev) => [createdItem, ...prev])
       setNewTitle('')
       setNewDescription('')
       setNewImportance('medium')
       setIsCreating(false)
       toast.success(`"${createdItem.title}" saved to your career preferences.`, 'Preference Created')
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to save preference'
+    } catch (err: unknown) {
+      const msg = errorMessage(err, 'Failed to save preference')
       toast.error(msg, 'Save Error')
     } finally {
       setIsSubmitting(false)
@@ -178,29 +164,14 @@ export default function PreferencesTab({ token: propToken }: PreferencesTabProps
         importance: editImportance,
       }
 
-      const res = await fetch(`/api/v1/preferences/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      })
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}))
-        const msg = typeof errData.detail === 'string' ? errData.detail : 'Could not update preference'
-        throw new Error(msg)
-      }
-
-      const updatedItem: PreferenceItem = await res.json()
+      const updatedItem = await updatePreference(token, id, payload)
       setPreferences((prev) =>
         prev.map((item) => (item.id === id ? updatedItem : item))
       )
       setEditingId(null)
       toast.success('Preference updated successfully!', 'Saved')
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to update'
+    } catch (err: unknown) {
+      const msg = errorMessage(err, 'Failed to update')
       toast.error(msg, 'Update Error')
     } finally {
       setIsUpdating(false)
@@ -211,21 +182,11 @@ export default function PreferencesTab({ token: propToken }: PreferencesTabProps
   const handleDelete = async (id: number, title: string) => {
     setDeletingId(id)
     try {
-      const res = await fetch(`/api/v1/preferences/${id}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (!res.ok) {
-        throw new Error('Failed to delete preference')
-      }
-
+      await deletePreference(token, id)
       setPreferences((prev) => prev.filter((item) => item.id !== id))
       toast.info(`"${title}" has been removed from preferences.`, 'Preference Removed')
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to delete'
+    } catch (err: unknown) {
+      const msg = errorMessage(err, 'Failed to delete')
       toast.error(msg, 'Delete Error')
     } finally {
       setDeletingId(null)

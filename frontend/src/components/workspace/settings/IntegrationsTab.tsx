@@ -1,9 +1,21 @@
 import { useState, useEffect, useCallback } from 'react'
+import {
+  ApiError,
+  createApiClient,
+  deleteApiClient,
+  listApiClients,
+} from '../../../api/integrations'
 import type { ApiClientItem, ApiClientCreateResponse } from '../../../types/workspace'
 import { useToast } from '../../ToastContext'
 
 interface IntegrationsTabProps {
   token: string
+}
+
+function errorMessage(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) return err.detail
+  if (err instanceof Error && err.message) return err.message
+  return fallback
 }
 
 const PRESET_CLIENTS = [
@@ -31,18 +43,10 @@ export default function IntegrationsTab({ token }: IntegrationsTabProps) {
 
   const fetchClients = useCallback(async () => {
     try {
-      const res = await fetch('/api/v1/api-clients', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-      if (!res.ok) {
-        throw new Error('Failed to load API client credentials')
-      }
-      const data: ApiClientItem[] = await res.json()
+      const data = await listApiClients(token)
       setClients(data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error occurred')
+    } catch (err: unknown) {
+      setError(errorMessage(err, 'Unknown error occurred'))
     } finally {
       setIsLoading(false)
     }
@@ -54,24 +58,16 @@ export default function IntegrationsTab({ token }: IntegrationsTabProps) {
       return
     }
 
-    fetch('/api/v1/api-clients', {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to load API client credentials')
-        return res.json()
-      })
+    listApiClients(token)
       .then((data: ApiClientItem[]) => {
         if (isMounted) {
           setClients(data)
           setIsLoading(false)
         }
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         if (isMounted) {
-          setError(err instanceof Error ? err.message : 'Unknown error occurred')
+          setError(errorMessage(err, 'Unknown error occurred'))
           setIsLoading(false)
         }
       })
@@ -88,28 +84,14 @@ export default function IntegrationsTab({ token }: IntegrationsTabProps) {
     try {
       setIsSubmitting(true)
       setError(null)
-      const res = await fetch('/api/v1/api-clients', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name: name.trim() }),
-      })
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
-        throw new Error(errorData.detail || 'Failed to generate API credentials')
-      }
-
-      const newClient: ApiClientCreateResponse = await res.json()
+      const newClient = await createApiClient(token, { name: name.trim() })
       setCreatedResult(newClient)
       setName('')
       toast.success(`API credentials for "${newClient.name}" created!`, 'Key Generated')
       // Refresh list
       await fetchClients()
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to generate API credentials'
+    } catch (err: unknown) {
+      const msg = errorMessage(err, 'Failed to generate API credentials')
       setError(msg)
       toast.error(msg, 'Error')
     } finally {
@@ -125,24 +107,14 @@ export default function IntegrationsTab({ token }: IntegrationsTabProps) {
 
     try {
       setError(null)
-      const res = await fetch(`/api/v1/api-clients/${clientId}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (!res.ok && res.status !== 204) {
-        throw new Error('Failed to revoke API credentials')
-      }
-
+      await deleteApiClient(token, clientId)
       setClients((prev) => prev.filter((c) => c.client_id !== clientId))
       if (createdResult && createdResult.client_id === clientId) {
         setCreatedResult(null)
       }
       toast.success(`Credentials for "${clientName}" revoked.`, 'Revoked')
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to revoke credentials'
+    } catch (err: unknown) {
+      const msg = errorMessage(err, 'Failed to revoke credentials')
       setError(msg)
       toast.error(msg, 'Error')
     }
