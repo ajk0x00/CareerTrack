@@ -400,6 +400,9 @@ class JobResponse(BaseModel):
     contact_phone: str | None = None
     created_at: datetime
     updated_at: datetime
+    expired_at: datetime | None = None
+    expires_at: datetime | None = None
+    purge_at: datetime | None = None
 
 
 class JobPipelineSummary(BaseModel):
@@ -410,3 +413,4 @@ class JobPipelineSummary(BaseModel):
     applied: int
     interviewing: int
     offer: int
+    expired_recently: int = 0

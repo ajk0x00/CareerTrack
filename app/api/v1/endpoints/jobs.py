@@ -1,6 +1,5 @@
 """Endpoints for managing Job postings and application pipeline tracking."""
 
-from collections.abc import Sequence
 from datetime import date
 from typing import Annotated
 
@@ -20,8 +19,18 @@ from app.schemas.job import (
     JobUpdate,
     SalaryInterval,
 )
+from app.services import job_lifecycle
 
 router = APIRouter()
+
+
+def _to_job_response(job: Job) -> JobResponse:
+    """Serializes a job, adding derived lifecycle timestamps for saved postings."""
+    response = JobResponse.model_validate(job)
+    if job.status == JobStatus.SAVED.value:
+        response.expires_at = job_lifecycle.expires_at(job.created_at)
+        response.purge_at = job_lifecycle.purge_at(job.created_at)
+    return response
 
 
 @router.get(
@@ -58,9 +67,16 @@ async def list_jobs(
         str,
         Query(description="Sort order: asc or desc"),
     ] = "desc",
-) -> Sequence[Job]:
+    include_expired: Annotated[
+        bool,
+        Query(description="Include saved jobs that have passed their expiry window"),
+    ] = False,
+) -> list[JobResponse]:
     """Returns all jobs tracked by the authenticated user with optional filtering and sorting."""
     stmt = select(Job).where(Job.user_id == current_user.id)
+
+    if not include_expired:
+        stmt = stmt.where(Job.expired_at.is_(None))
 
     if job_status is not None:
         stmt = stmt.where(Job.status == job_status.value)
@@ -95,7 +111,7 @@ async def list_jobs(
         stmt = stmt.order_by(target_column.desc().nulls_last())
 
     result = await db.execute(stmt)
-    return result.scalars().all()
+    return [_to_job_response(job) for job in result.scalars().all()]
 
 
 @router.get(
@@ -110,11 +126,18 @@ async def get_pipeline_summary(
     """Aggregates the count of jobs across all pipeline stages for the current user."""
     stmt = (
         select(Job.status, func.count(Job.id))
-        .where(Job.user_id == current_user.id)
+        .where(Job.user_id == current_user.id, Job.expired_at.is_(None))
         .group_by(Job.status)
     )
     result = await db.execute(stmt)
     counts = dict(result.all())
+
+    expired_stmt = select(func.count(Job.id)).where(
+        Job.user_id == current_user.id,
+        Job.status == JobStatus.SAVED.value,
+        Job.expired_at.is_not(None),
+    )
+    expired_recently = (await db.execute(expired_stmt)).scalar_one()
 
     saved = counts.get(JobStatus.SAVED.value, 0)
     applied = counts.get(JobStatus.APPLIED.value, 0)
@@ -128,6 +151,7 @@ async def get_pipeline_summary(
         applied=applied,
         interviewing=interviewing,
         offer=offer,
+        expired_recently=expired_recently,
     )
 
 
@@ -141,7 +165,7 @@ async def create_job(
     data: JobCreate,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> Job:
+) -> JobResponse:
     """Adds a new job posting to the user's career pipeline."""
     # Automatically set applied_date to today if user marks status as applied without providing a date
     effective_applied_date = data.applied_date
@@ -193,20 +217,20 @@ async def create_job(
     db.add(job)
     await db.flush()
     await db.refresh(job)
-    return job
+    return _to_job_response(job)
 
 
-@router.get(
-    "/{job_id}",
+@router.post(
+    "/{job_id}/restore",
     response_model=JobResponse,
-    summary="Get job posting details by ID",
+    summary="Restore an expired saved job posting",
 )
-async def get_job_by_id(
+async def restore_job(
     job_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> Job:
-    """Returns a specific job posting record belonging to the authenticated user."""
+) -> JobResponse:
+    """Clears the expiry marker on a saved job so it becomes visible again."""
     stmt = select(Job).where(
         Job.id == job_id,
         Job.user_id == current_user.id,
@@ -219,7 +243,45 @@ async def get_job_by_id(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Job not found",
         )
-    return job
+
+    if job.expired_at is not None:
+        job.expired_at = None
+        await db.flush()
+        await db.refresh(job)
+
+    return _to_job_response(job)
+
+
+@router.get(
+    "/{job_id}",
+    response_model=JobResponse,
+    summary="Get job posting details by ID",
+)
+async def get_job_by_id(
+    job_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    include_expired: Annotated[
+        bool,
+        Query(description="Return the job even if it has expired"),
+    ] = False,
+) -> JobResponse:
+    """Returns a specific job posting record belonging to the authenticated user."""
+    stmt = select(Job).where(
+        Job.id == job_id,
+        Job.user_id == current_user.id,
+    )
+    if not include_expired:
+        stmt = stmt.where(Job.expired_at.is_(None))
+    result = await db.execute(stmt)
+    job = result.scalar_one_or_none()
+
+    if job is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found",
+        )
+    return _to_job_response(job)
 
 
 @router.patch(
@@ -232,7 +294,7 @@ async def update_job(
     data: JobUpdate,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> Job:
+) -> JobResponse:
     """Updates fields of an existing job entry belonging to the authenticated user."""
     stmt = select(Job).where(
         Job.id == job_id,
@@ -343,7 +405,7 @@ async def update_job(
 
     await db.flush()
     await db.refresh(job)
-    return job
+    return _to_job_response(job)
 
 
 @router.delete(

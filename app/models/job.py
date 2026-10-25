@@ -3,7 +3,7 @@
 from datetime import date, datetime
 from enum import StrEnum
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String, Text, func
+from sqlalchemy import Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -30,6 +30,9 @@ class Job(Base):
     """Model storing job postings and user application pipeline tracking."""
 
     __tablename__ = "jobs"
+    __table_args__ = (
+        Index("ix_jobs_status_created_at", "status", "created_at"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(
@@ -99,4 +102,8 @@ class Job(Base):
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
+    )
+    expired_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
     )
