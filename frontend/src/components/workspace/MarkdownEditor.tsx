@@ -30,7 +30,7 @@ export default function MarkdownEditor({
   }
 
   return (
-    <div className="markdown-editor-card">
+    <div className="markdown-editor-card resume-editor-surface">
       {/* Editor Header Bar */}
       <div className="md-editor-header">
         <div className="md-dots-group">
@@ -63,7 +63,7 @@ export default function MarkdownEditor({
             auto_awesome
           </span>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <span className="banner-title" style={{ color: 'var(--on-surface)' }}>
                 Live Markdown Rendering Active
               </span>
@@ -83,6 +83,12 @@ export default function MarkdownEditor({
           <span>Copy Buffer</span>
         </button>
       </div>
+
+      {/* Header Line Hint */}
+      <p className="md-header-hint">
+        Header line: <code># Your Name</code> — edit it here; it renders as the resume
+        title and appears in the exported PDF.
+      </p>
 
       {/* Raw Markdown Textarea */}
       <div className="md-textarea-container">

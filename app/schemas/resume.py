@@ -190,3 +190,68 @@ class ResumeImportResponse(BaseModel):
     skills_created: int = 0
     skills_updated: int = 0
     errors: list[str] = Field(default_factory=list)
+
+
+class ResumeCreate(BaseModel):
+    """Payload for persisting a generated resume."""
+
+    job_id: int | None = Field(
+        default=None,
+        description="Optional job the resume is tailored to. Null creates the canonical master resume.",
+    )
+    title: str | None = Field(
+        default=None,
+        max_length=150,
+        description="Optional resume title. Derived from the job when omitted.",
+    )
+    markdown: str = Field(..., min_length=1, description="Resume content in Markdown format")
+
+
+class ResumeUpdate(BaseModel):
+    """Payload for partially updating a stored resume."""
+
+    title: str | None = Field(default=None, max_length=150)
+    markdown: str | None = Field(default=None, min_length=1)
+
+
+class ResumeSummary(BaseModel):
+    """List representation of a stored resume."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    job_id: int | None
+    job_title: str | None
+    job_company: str | None
+    created_at: datetime
+    updated_at: datetime
+    exported_at: datetime | None
+
+
+class ResumeDetail(ResumeSummary):
+    """Full representation of a stored resume including its Markdown body."""
+
+    markdown: str
+
+
+class ResumeDraftResponse(BaseModel):
+    """Draft resume built from live career data without persisting anything."""
+
+    markdown: str
+    has_profile: bool
+    has_experience: bool
+    has_skills: bool
+
+
+class AtsReport(BaseModel):
+    """Result of verifying the rendered PDF against the source Markdown."""
+
+    parse_clean: bool
+    char_count: int
+    page_count: int
+    sections_found: list[str]
+    missing_tokens: list[str]
+    keyword_coverage: float | None
+    matched_keywords: list[str]
+    missing_keywords: list[str]
