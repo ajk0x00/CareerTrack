@@ -1,4 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
+import {
+  ApiError,
+  createCompany,
+  deleteCompany,
+  listCompanies,
+  updateCompany,
+} from '../../../api/career'
 import type {
   CompanyWorkedItem,
   CompanyWorkedCreateInput,
@@ -12,6 +19,12 @@ interface CareerTabProps {
 }
 
 const CURRENT_YEAR = new Date().getFullYear()
+
+function errorMessage(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) return err.detail
+  if (err instanceof Error && err.message) return err.message
+  return fallback
+}
 
 export default function CareerTab({ token: propToken }: CareerTabProps) {
 
@@ -36,29 +49,14 @@ export default function CareerTab({ token: propToken }: CareerTabProps) {
   // Fetch companies from backend
   useEffect(() => {
     let isMounted = true
-    const url =
-      filter === 'all'
-        ? '/api/v1/companies'
-        : filter === 'active'
-        ? '/api/v1/companies?actively_working=true'
-        : `/api/v1/companies?employment_type=${filter}`
 
-
-    fetch(url, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to load companies')
-        return res.json()
-      })
+    listCompanies(token, filter)
       .then((data: CompanyWorkedItem[]) => {
         if (isMounted) setCompanies(data)
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         if (isMounted) {
-          const msg = err instanceof Error ? err.message : 'Error fetching company data'
+          const msg = errorMessage(err, 'Error fetching company data')
           toast.error(msg, 'Network Error')
         }
       })
@@ -75,33 +73,15 @@ export default function CareerTab({ token: propToken }: CareerTabProps) {
   const handleCreateCompany = async (payload: CompanyWorkedCreateInput) => {
     setIsSubmitting(true)
     try {
-      const res = await fetch('/api/v1/companies', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      })
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}))
-        const msg =
-          typeof errData.detail === 'string'
-            ? errData.detail
-            : 'Could not create company entry'
-        throw new Error(msg)
-      }
-
-      const created: CompanyWorkedItem = await res.json()
+      const created = await createCompany(token, payload)
       setCompanies((prev) => [created, ...prev])
       setIsCreating(false)
       toast.success(
         `"${created.company_name}" added to your career timeline.`,
         'Company Added'
       )
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to save company'
+    } catch (err: unknown) {
+      const msg = errorMessage(err, 'Failed to save company')
       toast.error(msg, 'Save Error')
     } finally {
       setIsSubmitting(false)
@@ -115,25 +95,7 @@ export default function CareerTab({ token: propToken }: CareerTabProps) {
   ) => {
     setIsUpdating(true)
     try {
-      const res = await fetch(`/api/v1/companies/${companyId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      })
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}))
-        const msg =
-          typeof errData.detail === 'string'
-            ? errData.detail
-            : 'Could not update company entry'
-        throw new Error(msg)
-      }
-
-      const updated: CompanyWorkedItem = await res.json()
+      const updated = await updateCompany(token, companyId, payload)
       setCompanies((prev) =>
         prev.map((c) => (c.id === companyId ? updated : c))
       )
@@ -142,8 +104,8 @@ export default function CareerTab({ token: propToken }: CareerTabProps) {
         `"${updated.company_name}" details updated successfully.`,
         'Company Updated'
       )
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to update company'
+    } catch (err: unknown) {
+      const msg = errorMessage(err, 'Failed to update company')
       toast.error(msg, 'Update Error')
     } finally {
       setIsUpdating(false)
@@ -162,21 +124,11 @@ export default function CareerTab({ token: propToken }: CareerTabProps) {
 
     setDeletingId(companyId)
     try {
-      const res = await fetch(`/api/v1/companies/${companyId}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (!res.ok) {
-        throw new Error('Failed to delete company entry')
-      }
-
+      await deleteCompany(token, companyId)
       setCompanies((prev) => prev.filter((c) => c.id !== companyId))
       toast.info(`"${companyName}" removed from career history.`, 'Company Deleted')
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to delete company'
+    } catch (err: unknown) {
+      const msg = errorMessage(err, 'Failed to delete company')
       toast.error(msg, 'Delete Error')
     } finally {
       setDeletingId(null)

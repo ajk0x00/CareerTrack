@@ -7515,3 +7515,167 @@ body {
   font-size: 12px;
   color: var(--error);
 }
+
+/* ==========================================================================
+   Education Settings Tab
+   ========================================================================== */
+
+.education-tab-container {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.education-form-card {
+  border-color: var(--primary);
+  background: var(--surface-container-lowest);
+  box-shadow: 0 4px 16px rgba(70, 72, 212, 0.08);
+}
+
+.education-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.education-date-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+  margin-top: 14px;
+}
+
+.education-date-input {
+  height: 42px;
+  padding: 0 14px;
+}
+
+.education-field-hint {
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--on-surface-variant);
+  line-height: 1.4;
+}
+
+.education-description-input {
+  min-height: 92px;
+  margin-top: 2px;
+}
+
+.education-records-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.education-record-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: 12px;
+  transition: all 0.15s ease;
+}
+
+.education-record-card:hover {
+  border-color: var(--outline);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.education-record-card.editing {
+  border-color: var(--primary);
+  background: var(--surface-container-lowest);
+  box-shadow: 0 0 0 1px var(--primary), 0 6px 20px rgba(70, 72, 212, 0.08);
+}
+
+.education-record-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(70, 72, 212, 0.1);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.education-record-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.education-record-degree {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--on-surface);
+  margin: 0;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.education-record-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--on-surface-variant);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.education-record-institution {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.education-record-meta-separator {
+  color: var(--outline);
+}
+
+.education-record-dates {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.education-record-description {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--on-surface-variant);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.education-empty-box {
+  text-align: center;
+}
+
+.education-empty-box .action-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+@media (max-width: 640px) {
+  .education-date-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .education-record-card {
+    flex-wrap: wrap;
+  }
+
+  .education-record-content {
+    flex-basis: calc(100% - 54px);
+  }
+}

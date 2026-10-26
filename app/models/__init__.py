@@ -1,5 +1,6 @@
 from app.models.api_client import ApiClient
 from app.models.company import CompanyWorked, EmploymentType
+from app.models.education import Education
 from app.models.experience_log import ExperienceLog
 from app.models.job import Job, JobStatus, WorkplaceType
 from app.models.preference import Preference, PreferenceImportance
@@ -11,6 +12,7 @@ from app.models.workspace import Workspace
 __all__ = [
     "ApiClient",
     "CompanyWorked",
+    "Education",
     "EmploymentType",
     "ExperienceLog",
     "Job",

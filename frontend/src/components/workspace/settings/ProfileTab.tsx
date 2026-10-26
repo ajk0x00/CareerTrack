@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
-import type { User, AddressDetails, SocialLinks, ApiError } from '../../../types/auth'
+import { ApiError, getProfile, updateProfile } from '../../../api/profile'
+import type { ProfileUpdateInput } from '../../../api/profile'
+import type { User, AddressDetails, SocialLinks } from '../../../types/auth'
 import { useToast } from '../../ToastContext'
 
 
@@ -7,6 +9,12 @@ interface ProfileTabProps {
   user: User
   token: string
   onProfileUpdated: (updatedUser: User) => void
+}
+
+function errorMessage(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) return err.detail
+  if (err instanceof Error && err.message) return err.message
+  return fallback
 }
 
 export default function ProfileTab({
@@ -44,15 +52,7 @@ export default function ProfileTab({
     if (!token) return
 
     let isMounted = true
-    fetch('/api/v1/profile', {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to load profile')
-        return res.json()
-      })
+    getProfile(token)
       .then((profileData: User) => {
         if (profileData.name) setName(profileData.name)
         if (profileData.email) setEmail(profileData.email)
@@ -74,9 +74,12 @@ export default function ProfileTab({
           setWebsite(profileData.socials.website || '')
         }
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         console.error('Error fetching profile:', err)
-        toast.error('Failed to load profile details from server.', 'Network Error')
+        toast.error(
+          errorMessage(err, 'Failed to load profile details from server.'),
+          'Network Error'
+        )
       })
       .finally(() => {
         if (isMounted) {
@@ -111,13 +114,7 @@ export default function ProfileTab({
     if (portfolio.trim()) socialsPayload.portfolio = portfolio.trim()
     if (website.trim()) socialsPayload.website = website.trim()
 
-    const payload: {
-      name: string | null
-      email?: string
-      phone: string | null
-      address: AddressDetails | null
-      socials: SocialLinks | null
-    } = {
+    const payload: ProfileUpdateInput = {
       name: name.trim() || null,
       phone: phone.trim() || null,
       address: Object.keys(addressPayload).length > 0 ? addressPayload : null,
@@ -129,34 +126,13 @@ export default function ProfileTab({
     }
 
     try {
-      const res = await fetch('/api/v1/profile', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      })
-
-      if (!res.ok) {
-        const errorData: ApiError = await res.json().catch(() => ({}))
-        if (Array.isArray(errorData.detail)) {
-          const firstError = errorData.detail[0]
-          throw new Error(firstError.msg || 'Validation failed')
-        }
-        if (typeof errorData.detail === 'string') {
-          throw new Error(errorData.detail)
-        }
-        throw new Error('Failed to update profile. Please verify your inputs.')
-      }
-
-      const updatedUser: User = await res.json()
+      const updatedUser = await updateProfile(token, payload)
       onProfileUpdated(updatedUser)
       setSuccessMsg('Profile successfully updated!')
       toast.success('Your profile changes have been saved to the database.', 'Profile Updated')
       setTimeout(() => setSuccessMsg(null), 4000)
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'An unexpected error occurred'
+    } catch (err: unknown) {
+      const msg = errorMessage(err, 'An unexpected error occurred')
       setErrorMsg(msg)
       toast.error(msg, 'Update Failed')
     } finally {
