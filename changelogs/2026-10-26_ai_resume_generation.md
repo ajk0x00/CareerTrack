@@ -10,7 +10,7 @@
 - `app/prompts/tailor_resume_skills.md`: Added the prompt that selects and ranks existing skill IDs without allowing invented skill names.
 - `app/prompts/tailor_resume_experience.md`: Added the prompt that selects source accomplishment IDs and rewrites them without adding facts or metrics.
 - `app/schemas/resume.py`: Added `ResumeGenerationRequest` and typed job-context, summary, skill-selection, experience-selection, and candidate-context models. Generated prose is normalized to Markdown-safe single lines.
-- `app/llm/prompt.py`: Changed placeholder replacement to one-pass regex substitution so inserted job or candidate text containing placeholder-like strings cannot be re-expanded.
+- `app/llm/prompt.py`: Role sections are now compiled into a `ChatPromptTemplate` and rendered with `format_messages()`, so LangChain owns placeholder substitution instead of a hand-rolled regex pass. Substituted values are never re-interpreted as templates, a missing variable fails with the prompt and variable name, and an unescaped literal brace is reported as such rather than as a bogus variable. The prompt-name argument was renamed `prompt_name` so a template may declare a `{name}` variable.
 - `app/core/config.py`: Added bounded `LLM_TIMEOUT_SECONDS` and `LLM_MAX_RETRIES` settings for generation calls.
 - `.env.example`: Documented the LLM timeout and retry settings.
 - `app/services/resume.py`: Extracted shared user-scoped career loading into `_CareerSnapshot`, added deterministic experience-year calculation from merged employment intervals, education formatting, candidate-context construction, and the `ResumeGenerationService` graph orchestrator.
@@ -44,5 +44,6 @@ No database migration, new runtime dependency, or infrastructure change was requ
 - Request descriptions are capped at 50,000 characters. Stored descriptions are not revalidated against that cap before being sent to the provider.
 - Generated text is stripped of unsupported Markdown/HTML constructs and collapsed to one line, but stored employer, skill, and education values can still contain Markdown that the PDF exporter rejects.
 - The client guards against duplicate Generate clicks, but the API itself is not idempotent or rate-limited. Because generation performs no writes, retries cannot duplicate database records.
-- The graph requires `LLM_API_KEY`; a missing key is surfaced as a generic 502 rather than exposing configuration details to the client.
+- The graph requires `LLM_API_KEY`; a missing key is surfaced as a generic 502 rather than exposing configuration details to the client. This also means a misconfiguration is indistinguishable from a provider failure — a typed `503` for configuration errors is still outstanding.
+- Prompt bodies are now LangChain templates, so any literal brace in a prompt must be written `{{` or `}}`. `load_prompt` fails loudly on an unescaped brace rather than sending a half-rendered prompt to the model.
 - Unit tests mock the model and do not require PostgreSQL or an LLM provider. A real-provider smoke test and route-level integration test remain follow-up verification when those services are available.

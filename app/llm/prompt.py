@@ -1,16 +1,28 @@
 """Prompt template loader with YAML frontmatter LLM configuration."""
 
 from pathlib import Path
+import logging
 import re
 from typing import Any
 
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
+from langchain_core.messages import BaseMessage
+from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, ConfigDict, Field
 import yaml
 
 from app.core.config import get_settings
 
+logger = logging.getLogger(__name__)
+
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
+
+# Markdown section header -> LangChain chat message role.
+_SECTION_ROLES: dict[str, str] = {
+    "system": "system",
+    "user": "human",
+    "assistant": "ai",
+}
+
 
 
 class PromptLLMConfig(BaseModel):
@@ -23,7 +35,7 @@ class PromptLLMConfig(BaseModel):
     base_url: str = Field(description="Upstream API base URL")
 
 
-def load_prompt(name: str, **variables: Any) -> tuple[list[BaseMessage], PromptLLMConfig]:
+def load_prompt(prompt_name: str, **variables: Any) -> tuple[list[BaseMessage], PromptLLMConfig]:
     """Load and render prompt messages and LLM configuration from app/prompts/{name}.md.
 
     Supports YAML frontmatter delimited by '---' at the top of the file to configure
@@ -31,8 +43,10 @@ def load_prompt(name: str, **variables: Any) -> tuple[list[BaseMessage], PromptL
     fall back to the global application Settings.
 
     Args:
-        name: Base name of the prompt (without file extension).
-        **variables: Keyword arguments to replace '{key}' placeholders in the prompt.
+        prompt_name: Base name of the prompt (without file extension).
+        **variables: Values for the '{key}' placeholders declared in the prompt body.
+            Rendering is delegated to ChatPromptTemplate; every declared placeholder
+            must be supplied.
 
     Returns:
         A tuple of (messages, prompt_llm_config).
@@ -41,7 +55,7 @@ def load_prompt(name: str, **variables: Any) -> tuple[list[BaseMessage], PromptL
         FileNotFoundError: If the Markdown prompt file does not exist.
         ValueError: If role sections (# System, # User) are missing or empty.
     """
-    md_path = PROMPTS_DIR / f"{name}.md"
+    md_path = PROMPTS_DIR / f"{prompt_name}.md"
     if not md_path.is_file():
         raise FileNotFoundError(f"Prompt template not found at {md_path}")
 
@@ -76,18 +90,39 @@ def load_prompt(name: str, **variables: Any) -> tuple[list[BaseMessage], PromptL
     }
     prompt_config = PromptLLMConfig.model_validate(config_data)
 
-    # 2. Substitute variable placeholders in one pass so inserted values containing
-    # placeholder-like text are never interpreted as templates themselves.
-    if variables:
-        placeholder_pattern = re.compile(
-            r"\{(" + "|".join(re.escape(key) for key in variables) + r")\}"
+    # 2. Split the body into role sections and let LangChain own the templating.
+    prompt_template = _build_chat_template(md_path, raw_md)
+
+    declared = set(prompt_template.input_variables)
+    missing = sorted(declared - set(variables))
+    if missing:
+        raise ValueError(
+            f"Prompt {md_path.name} is missing values for: {', '.join(missing)}."
         )
-        raw_md = placeholder_pattern.sub(
-            lambda match: str(variables[match.group(1)]),
-            raw_md,
+    unused = sorted(set(variables) - declared)
+    if unused:
+        logger.debug(
+            "Prompt %s received unused variables: %s", md_path.name, ", ".join(unused)
         )
 
-    # 3. Parse sections delimited by '# System', '# User', '# Assistant' headers
+    try:
+        messages = prompt_template.format_messages(**variables)
+    except (KeyError, ValueError) as exc:
+        raise ValueError(
+            f"Prompt {md_path.name} could not be rendered: {exc}. "
+            "Escape literal braces in the prompt as '{{' and '}}'."
+        ) from exc
+
+    return messages, prompt_config
+
+
+def _build_chat_template(md_path: Path, raw_md: str) -> ChatPromptTemplate:
+    """Builds a ChatPromptTemplate from '# System' / '# User' / '# Assistant' sections.
+
+    The section text keeps its '{variable}' placeholders; ChatPromptTemplate parses
+    and renders them, so substituted values are never re-interpreted as templates.
+    Literal braces in a prompt body must be written as '{{' and '}}'.
+    """
     section_pattern = re.compile(
         r"^#\s+(System|User|Assistant)\b",
         re.IGNORECASE | re.MULTILINE,
@@ -99,29 +134,36 @@ def load_prompt(name: str, **variables: Any) -> tuple[list[BaseMessage], PromptL
             f"Prompt {md_path} contains no valid role headers (# System, # User, # Assistant)."
         )
 
-    messages: list[BaseMessage] = []
+    sections: list[tuple[str, str]] = []
     for i, match in enumerate(matches):
-        role = match.group(1).lower()
+        role = _SECTION_ROLES[match.group(1).lower()]
         start_idx = match.end()
         end_idx = matches[i + 1].start() if i + 1 < len(matches) else len(raw_md)
         content = raw_md[start_idx:end_idx].strip()
-        if not content:
-            continue
+        if content:
+            sections.append((role, content))
 
-        if role == "system":
-            messages.append(SystemMessage(content=content))
-        elif role == "assistant":
-            messages.append(AIMessage(content=content))
-        else:
-            messages.append(HumanMessage(content=content))
-
-    if not messages:
+    if not sections:
         raise ValueError(f"Prompt {md_path} has empty role sections.")
 
-    return messages, prompt_config
+    prompt_template = ChatPromptTemplate.from_messages(sections)
+
+    # A '{' that does not open a plain identifier is almost always a literal JSON
+    # brace that needs escaping; report it as such instead of a bogus variable.
+    unescaped = sorted(
+        name for name in prompt_template.input_variables if not name.isidentifier()
+    )
+    if unescaped:
+        raise ValueError(
+            f"Prompt {md_path.name} contains unescaped literal braces "
+            f"({', '.join(repr(name) for name in unescaped)}); "
+            "write literal braces as '{{' and '}}'."
+        )
+
+    return prompt_template
 
 
-def load_prompt_messages(name: str, **variables: Any) -> list[BaseMessage]:
+def load_prompt_messages(prompt_name: str, **variables: Any) -> list[BaseMessage]:
     """Helper to load only the messages without returning the prompt configuration."""
-    messages, _ = load_prompt(name, **variables)
+    messages, _ = load_prompt(prompt_name, **variables)
     return messages
