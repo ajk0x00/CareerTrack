@@ -28,6 +28,7 @@ class CompanyWorked(Base):
         index=True,
     )
     company_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    job_title: Mapped[str | None] = mapped_column(String(150), nullable=True)
     employment_type: Mapped[str] = mapped_column(
         String(50),
         nullable=False,

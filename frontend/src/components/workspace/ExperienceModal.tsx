@@ -343,7 +343,9 @@ export default function ExperienceModal({
                   <option value="">Select a company from your career...</option>
                   {companies.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.company_name} {c.actively_working ? '(Current Role)' : ''}
+                      {`${c.company_name}${c.job_title ? ` — ${c.job_title}` : ''}${
+                        c.actively_working ? ' (Current Role)' : ''
+                      }`}
                     </option>
                   ))}
                 </select>

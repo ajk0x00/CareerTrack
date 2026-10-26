@@ -15,6 +15,11 @@ class CompanyWorkedBase(BaseModel):
         max_length=255,
         description="Name of the company worked in",
     )
+    job_title: str | None = Field(
+        default=None,
+        max_length=150,
+        description="Job title held at this company",
+    )
     employment_type: EmploymentType = Field(
         default=EmploymentType.FULL_TIME,
         description="Type of employment (full_time, part_time, contract, internship)",
@@ -41,6 +46,14 @@ class CompanyWorkedBase(BaseModel):
         if len(stripped) > 255:
             raise ValueError("Company name must not exceed 255 characters")
         return stripped
+
+    @field_validator("job_title")
+    @classmethod
+    def normalize_job_title(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        stripped = v.strip()
+        return stripped or None
 
     @field_validator("employment_type", mode="before")
     @classmethod
@@ -73,6 +86,11 @@ class CompanyWorkedUpdate(BaseModel):
         max_length=255,
         description="Updated company name",
     )
+    job_title: str | None = Field(
+        default=None,
+        max_length=150,
+        description="Updated job title held at this company",
+    )
     employment_type: EmploymentType | None = Field(
         default=None,
         description="Updated type of employment",
@@ -101,6 +119,14 @@ class CompanyWorkedUpdate(BaseModel):
         if len(stripped) > 255:
             raise ValueError("Company name must not exceed 255 characters")
         return stripped
+
+    @field_validator("job_title")
+    @classmethod
+    def normalize_job_title(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        stripped = v.strip()
+        return stripped or None
 
     @field_validator("employment_type", mode="before")
     @classmethod
@@ -139,9 +165,18 @@ class CompanyWorkedResponse(BaseModel):
     id: int
     user_id: int
     company_name: str
+    job_title: str | None = None
     employment_type: EmploymentType
     start_date: date
     end_date: date | None = None
     actively_working: bool
     created_at: datetime
     updated_at: datetime
+
+    @field_validator("job_title")
+    @classmethod
+    def normalize_job_title(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        stripped = v.strip()
+        return stripped or None

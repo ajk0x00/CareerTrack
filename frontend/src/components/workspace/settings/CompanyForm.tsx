@@ -4,6 +4,7 @@ import type { CompanyWorkedCreateInput, EmploymentType } from '../../../types/wo
 interface CompanyFormProps {
   initialValues?: {
     company_name: string
+    job_title?: string | null
     employment_type?: EmploymentType
     start_date: string
     end_date?: string | null
@@ -27,6 +28,7 @@ export default function CompanyForm({
   submitLabel = 'Save Company',
 }: CompanyFormProps) {
   const [companyName, setCompanyName] = useState<string>(initialValues?.company_name || '')
+  const [jobTitle, setJobTitle] = useState<string>(initialValues?.job_title || '')
   const [employmentType, setEmploymentType] = useState<EmploymentType>(
     initialValues?.employment_type || 'full_time'
   )
@@ -66,6 +68,7 @@ export default function CompanyForm({
 
     await onSubmit({
       company_name: trimmedName,
+      job_title: jobTitle.trim() || null,
       employment_type: employmentType,
       start_date: startDate,
       end_date: activelyWorking ? null : endDate || null,
@@ -111,23 +114,43 @@ export default function CompanyForm({
           </div>
         )}
 
-        <div className="pref-field-group">
-          <label htmlFor="company-name-input" className="pref-field-label">
-            Company Name <span className="field-required">*</span>
-          </label>
-          <div className="company-input-wrapper">
-            <span className="material-symbols-outlined company-input-icon">business</span>
-            <input
-              id="company-name-input"
-              type="text"
-              className="pref-field-input company-input-with-icon"
-              placeholder="e.g. Stripe, Vercel, Google, Linear..."
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              maxLength={255}
-              required
-              autoFocus
-            />
+        <div className="company-name-grid">
+          <div className="pref-field-group">
+            <label htmlFor="company-name-input" className="pref-field-label">
+              Company Name <span className="field-required">*</span>
+            </label>
+            <div className="company-input-wrapper">
+              <span className="material-symbols-outlined company-input-icon">business</span>
+              <input
+                id="company-name-input"
+                type="text"
+                className="pref-field-input company-input-with-icon"
+                placeholder="e.g. Stripe, Vercel, Google, Linear..."
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                maxLength={255}
+                required
+                autoFocus
+              />
+            </div>
+          </div>
+
+          <div className="pref-field-group">
+            <label htmlFor="company-job-title-input" className="pref-field-label">
+              Job Title <span className="pref-field-optional">(Optional)</span>
+            </label>
+            <div className="company-input-wrapper">
+              <span className="material-symbols-outlined company-input-icon">work</span>
+              <input
+                id="company-job-title-input"
+                type="text"
+                className="pref-field-input company-input-with-icon"
+                placeholder="e.g. Senior Backend Engineer"
+                value={jobTitle}
+                onChange={(e) => setJobTitle(e.target.value)}
+                maxLength={150}
+              />
+            </div>
           </div>
         </div>
 

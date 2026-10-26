@@ -100,6 +100,7 @@ def calculate_experience_summary(
         item = {
             "id": comp.id,
             "company_name": comp.company_name,
+            "job_title": comp.job_title,
             "employment_type": comp.employment_type,
             "start_date": comp.start_date.isoformat(),
             "end_date": comp.end_date.isoformat() if comp.end_date else None,

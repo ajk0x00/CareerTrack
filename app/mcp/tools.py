@@ -224,6 +224,7 @@ def register_tools(server: MCPServer) -> None:
                     {
                         "id": c.id,
                         "company_name": c.company_name,
+                        "job_title": c.job_title,
                         "employment_type": c.employment_type,
                         "start_date": c.start_date.isoformat(),
                         "end_date": c.end_date.isoformat() if c.end_date else None,
@@ -293,6 +294,7 @@ def register_tools(server: MCPServer) -> None:
                     "id": log.id,
                     "company_id": log.company_id,
                     "company_name": log.company_name,
+                    "job_title": log.company.job_title if log.company else None,
                     "description": log.description,
                     "created_at": log.created_at.isoformat(),
                     "updated_at": log.updated_at.isoformat(),
