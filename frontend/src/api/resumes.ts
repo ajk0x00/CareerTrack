@@ -3,6 +3,7 @@ import type {
   ResumeCreateInput,
   ResumeDetail,
   ResumeDraft,
+  ResumeGenerateInput,
   ResumeSummary,
   ResumeUpdateInput,
 } from '../types/resume'
@@ -28,6 +29,7 @@ export interface ExportedResume {
 
 const RESUMES_PATH = '/api/v1/resumes'
 const DRAFT_PATH = '/api/v1/resumes/draft'
+const GENERATE_PATH = '/api/v1/resumes/generate'
 
 function resumePath(id: number): string {
   return `${RESUMES_PATH}/${id}`
@@ -107,6 +109,18 @@ export async function listResumes(token: string): Promise<ResumeSummary[]> {
 /** Builds a resume draft from the user's live career data without persisting it. */
 export async function getResumeDraft(token: string): Promise<ResumeDraft> {
   return requestJson<ResumeDraft>(DRAFT_PATH, { headers: authHeaders(token) })
+}
+
+/** Generates a tailored or generic resume from live career data. */
+export async function generateResume(
+  token: string,
+  input: ResumeGenerateInput
+): Promise<ResumeDraft> {
+  return requestJson<ResumeDraft>(GENERATE_PATH, {
+    method: 'POST',
+    headers: jsonHeaders(token),
+    body: JSON.stringify(input),
+  })
 }
 
 /** Persists a resume, optionally tied to a job. */

@@ -13,6 +13,7 @@ import {
   ApiError,
   createResume,
   exportResume,
+  generateResume,
   getAtsReport,
   getResume,
   getResumeDraft,
@@ -109,8 +110,9 @@ export default function TailoredResumeWorkspace({
   const jobId: number | null =
     qJobId !== null && /^\d+$/.test(qJobId) ? Number(qJobId) : null
 
-  const [company, setCompany] = useState<string>(() => qCompany || 'Stripe, Inc.')
-  const [roleTitle, setRoleTitle] = useState<string>(() => qRole || 'Staff Product Engineer')
+  const [company, setCompany] = useState<string>(() => qCompany || '')
+  const [roleTitle, setRoleTitle] = useState<string>(() => qRole || '')
+  const [jobDescription, setJobDescription] = useState<string>('')
   const [prevParams, setPrevParams] = useState({ company: qCompany, role: qRole, jobId: qJobId })
 
   if (
@@ -118,12 +120,14 @@ export default function TailoredResumeWorkspace({
     prevParams.role !== qRole ||
     prevParams.jobId !== qJobId
   ) {
+    const jobChanged = prevParams.jobId !== qJobId
     setPrevParams({ company: qCompany, role: qRole, jobId: qJobId })
     if (qCompany) setCompany(qCompany)
+    else if (jobChanged) setCompany('')
     if (qRole) setRoleTitle(qRole)
+    else if (jobChanged) setRoleTitle('')
+    if (jobChanged) setJobDescription('')
   }
-
-  const [jobDescription, setJobDescription] = useState<string>(DEFAULT_SAMPLE_JD)
 
   // Fetch full job description if jobId query parameter is passed
   useEffect(() => {
@@ -143,13 +147,13 @@ export default function TailoredResumeWorkspace({
         if (!isMounted) return
         if (job.company_name) setCompany(job.company_name)
         if (job.title) setRoleTitle(job.title)
-        if (job.description) {
+        if (job.description || job.requirements) {
           const fullPosting =
-            job.description +
+            (job.description || '') +
             (job.requirements
               ? `\n\nKey Requirements & Qualifications:\n${job.requirements}`
               : '')
-          setJobDescription(fullPosting)
+          setJobDescription(fullPosting.trim())
           toast.success(
             `Loaded exact job posting for ${job.title} at ${job.company_name}`,
             'Target Job Loaded'
@@ -297,27 +301,43 @@ export default function TailoredResumeWorkspace({
   const [isGenerating, setIsGenerating] = useState<boolean>(false)
   const [highlightFlash, setHighlightFlash] = useState<boolean>(false)
 
-  // Rebuild the canvas from the user's live career data
+  // Generate an AI-tailored resume, or a generic AI resume when no job is supplied.
   const handleGenerate = useCallback(async (): Promise<void> => {
     if (!token) {
-      toast.error('Sign in again to rebuild your resume draft', 'Not Signed In')
+      toast.error('Sign in again to generate your resume', 'Not Signed In')
       return
     }
+    if (isGenerating) return
+
+    const targetDescription = jobDescription.trim()
+    const isTailored = Boolean(targetDescription || jobId !== null)
 
     setIsGenerating(true)
     try {
-      const draft = await getResumeDraft(token)
+      const draft = await generateResume(token, {
+        job_id: jobId,
+        job_description: targetDescription || null,
+      })
       setMarkdownContent(draft.markdown)
+      setAtsState(null)
       setLoadErrorState(null)
       setHighlightFlash(true)
       window.setTimeout(() => setHighlightFlash(false), 1200)
-      toast.success('Draft rebuilt from your career data', 'Draft Rebuilt')
+      toast.success(
+        isTailored
+          ? 'Your resume was tailored to the target job'
+          : 'Your generic resume was generated from your career data',
+        isTailored ? 'Resume Tailored' : 'Resume Generated'
+      )
     } catch (error) {
-      toast.error(toErrorMessage(error, 'Could not rebuild your draft'), 'Draft Error')
+      toast.error(
+        toErrorMessage(error, 'Could not generate your resume'),
+        'Generation Error'
+      )
     } finally {
       setIsGenerating(false)
     }
-  }, [token, toast])
+  }, [token, isGenerating, jobDescription, jobId, toast])
 
   // Persist the canvas: create on first save, patch on subsequent saves.
   // Returns the stored resume id so callers (export) can chain off it.
@@ -479,6 +499,7 @@ export default function TailoredResumeWorkspace({
           onRoleTitleChange={setRoleTitle}
           jobDescription={jobDescription}
           onJobDescriptionChange={setJobDescription}
+          hasTargetJob={jobId !== null || jobDescription.trim().length > 0}
           onReloadSample={() => setJobDescription(DEFAULT_SAMPLE_JD)}
           onGenerate={handleGenerate}
           isGenerating={isGenerating}

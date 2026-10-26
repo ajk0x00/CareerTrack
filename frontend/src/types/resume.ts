@@ -35,6 +35,12 @@ export interface AtsReport {
   missing_keywords: string[]
 }
 
+/** Optional target used when AI-generating a resume. */
+export interface ResumeGenerateInput {
+  job_id?: number | null
+  job_description?: string | null
+}
+
 /** Payload for persisting a new resume. */
 export interface ResumeCreateInput {
   job_id?: number | null
