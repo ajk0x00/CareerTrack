@@ -112,11 +112,14 @@ async def upsert_database_node(
             co_obj.start_date = ext_co.start_date
             co_obj.end_date = ext_co.end_date
             co_obj.actively_working = ext_co.actively_working
+            if ext_co.title:
+                co_obj.job_title = ext_co.title[:150]
             companies_updated += 1
         else:
             co_obj = CompanyWorked(
                 user_id=user_id,
                 company_name=ext_co.company_name,
+                job_title=ext_co.title[:150] or None,
                 employment_type=ext_co.employment_type.value,
                 start_date=ext_co.start_date,
                 end_date=ext_co.end_date,
@@ -224,19 +227,6 @@ async def _upsert_accomplishments(
     }
 
     added = 0
-
-    if extracted_co.title:
-        role_desc = f"Role: {extracted_co.title}"
-        if role_desc.lower() not in existing_descriptions:
-            db.add(
-                ExperienceLog(
-                    user_id=user_id,
-                    company_id=company_id,
-                    description=role_desc,
-                )
-            )
-            existing_descriptions.add(role_desc.lower())
-            added += 1
 
     for bullet in extracted_co.accomplishments:
         clean_bullet = bullet.strip().lstrip("-*•").strip()

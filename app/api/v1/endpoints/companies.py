@@ -65,6 +65,7 @@ async def create_company(
     company = CompanyWorked(
         user_id=current_user.id,
         company_name=data.company_name,
+        job_title=data.job_title,
         employment_type=(
             data.employment_type.value
             if isinstance(data.employment_type, EmploymentType)
@@ -157,6 +158,8 @@ async def update_company(
 
     if "company_name" in update_data and update_data["company_name"] is not None:
         company.company_name = update_data["company_name"]
+    if "job_title" in update_data:
+        company.job_title = update_data["job_title"]
     if "employment_type" in update_data and update_data["employment_type"] is not None:
         company.employment_type = (
             update_data["employment_type"].value

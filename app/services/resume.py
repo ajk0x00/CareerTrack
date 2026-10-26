@@ -3,7 +3,6 @@
 from collections import defaultdict
 from datetime import date
 import logging
-import re
 from typing import Any
 
 from sqlalchemy import select
@@ -25,8 +24,6 @@ _PROFICIENCY_ORDER: tuple[str, ...] = (
     SkillProficiency.INTERMEDIATE.value,
     SkillProficiency.BEGINNER.value,
 )
-
-_ROLE_PREFIX = re.compile(r"^\s*role:\s*", re.IGNORECASE)
 
 
 class ResumeImportService:
@@ -168,13 +165,19 @@ class ResumeDraftService:
 
         experience_blocks: list[str] = []
         for company in companies:
+            job_title = (company.job_title or "").strip()
+            heading = (
+                f"**{job_title} \u2014 {company.company_name}**"
+                if job_title
+                else f"**{company.company_name}**"
+            )
             block_lines = [
-                f"**{company.company_name}**",
+                heading,
                 ResumeDraftService._dates_line(company),
             ]
             for log in logs_by_company.get(company.id, []):
                 description = log.description.strip()
-                if not description or _ROLE_PREFIX.match(description):
+                if not description:
                     continue
                 block_lines.append(f"- {description}")
             experience_blocks.append("\n".join(block_lines))
