@@ -1729,10 +1729,15 @@ body {
   box-shadow: 0 0 0 2px rgba(70, 72, 212, 0.15);
 }
 
+/* Rendered in its own row under the textarea: as an absolute overlay it covered
+   the last lines of the job description the user was reading. */
+.jd-sample-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
 .reload-sample-btn {
-  position: absolute;
-  bottom: 12px;
-  right: 12px;
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -5184,10 +5189,14 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   border: 1px dashed var(--surface-container);
   border-radius: 8px;
   margin-top: 4px;
+  /* Fill the column body so the empty state is centred, not stranded at the top. */
+  flex: 1;
+  min-height: 0;
 }
 
 .empty-icon {

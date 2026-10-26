@@ -20,6 +20,8 @@ interface ResumeCanvasProps {
   isSaving?: boolean
   isDownloading?: boolean
   isDirty?: boolean
+  documentTitle?: string | null
+  documentTimestamp?: string | null
   atsReport?: AtsReport | null
   isLoadingDraft?: boolean
   loadError?: string | null
@@ -45,6 +47,8 @@ export default function ResumeCanvas({
   isSaving = false,
   isDownloading = false,
   isDirty = false,
+  documentTitle = null,
+  documentTimestamp = null,
   atsReport = null,
   isLoadingDraft = false,
   loadError = null,
@@ -102,11 +106,19 @@ export default function ResumeCanvas({
         {/* Document Identity */}
         <div className="doc-identity-group">
           <div className="doc-title-row">
-            <h1 className="doc-main-title">LATEST RESUME MARKDOWN RENDERED</h1>
-            <span className="doc-version-tag">v3.2 - {company} Tailored</span>
+            <h1 className="doc-main-title">
+              {isDirty ? 'RESUME MARKDOWN RENDERED' : 'SAVED RESUME'}
+            </h1>
+            {documentTitle && (
+              <span className="doc-version-tag">{documentTitle}</span>
+            )}
           </div>
           <div className="doc-meta-row">
-            <span className="doc-timestamp">Last synthesized: Just now</span>
+            {documentTimestamp ? (
+              <span className="doc-timestamp">{documentTimestamp}</span>
+            ) : (
+              <span className="doc-timestamp">Not saved yet</span>
+            )}
             {coverageLabel && (
               <>
                 <span>•</span>
