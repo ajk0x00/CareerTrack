@@ -5987,6 +5987,18 @@ body {
   padding-left: 38px;
 }
 
+.company-name-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 600px) {
+  .company-name-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .company-status-toggle-row {
   display: flex;
   align-items: center;
@@ -6264,6 +6276,13 @@ body {
   color: var(--on-surface);
   line-height: 1.25;
   margin: 0;
+}
+
+.company-timeline-company {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--on-surface-variant);
+  margin-top: 2px;
 }
 
 .company-type-badge {

@@ -58,6 +58,7 @@ export interface CompanyWorkedItem {
   id: number
   user_id: number
   company_name: string
+  job_title: string | null
   employment_type: EmploymentType
   start_date: string
   end_date?: string | null
@@ -68,6 +69,7 @@ export interface CompanyWorkedItem {
 
 export interface CompanyWorkedCreateInput {
   company_name: string
+  job_title?: string | null
   employment_type: EmploymentType
   start_date: string
   end_date?: string | null
@@ -76,6 +78,7 @@ export interface CompanyWorkedCreateInput {
 
 export interface CompanyWorkedUpdateInput {
   company_name?: string
+  job_title?: string | null
   employment_type?: EmploymentType
   start_date?: string
   end_date?: string | null

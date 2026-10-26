@@ -109,6 +109,7 @@ export default function CompanyTimelineItem({
           <CompanyForm
             initialValues={{
               company_name: company.company_name,
+              job_title: company.job_title,
               employment_type: company.employment_type,
               start_date: company.start_date,
               end_date: company.end_date,
@@ -118,7 +119,7 @@ export default function CompanyTimelineItem({
             onCancel={onCancelEdit}
             isSubmitting={isUpdating}
             title={`Edit ${company.company_name}`}
-            subtitle="Update start date, end date, employment type, or actively working status."
+            subtitle="Update job title, dates, employment type, or actively working status."
             submitLabel="Save Changes"
           />
         </div>
@@ -151,7 +152,9 @@ export default function CompanyTimelineItem({
               </div>
               <div>
                 <div className="company-timeline-name-row">
-                  <h5 className="company-timeline-name">{company.company_name}</h5>
+                  <h5 className="company-timeline-name">
+                    {company.job_title || company.company_name}
+                  </h5>
                   <span className={`company-type-badge ${company.employment_type || 'full_time'}`}>
                     <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>
                       {empMeta.icon}
@@ -167,6 +170,10 @@ export default function CompanyTimelineItem({
                     <span className="company-past-pill">Past Employer</span>
                   )}
                 </div>
+
+                {company.job_title && (
+                  <div className="company-timeline-company">{company.company_name}</div>
+                )}
 
                 <div className="company-timeline-meta-row">
                   <span className="company-date-chip">
