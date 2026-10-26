@@ -41,6 +41,16 @@ function toErrorMessage(error: unknown, fallback: string): string {
 }
 
 
+function formatSavedAt(isoTimestamp: string): string {
+  const parsed = new Date(isoTimestamp)
+  if (Number.isNaN(parsed.getTime())) return 'recently'
+  const now = new Date()
+  const sameDay = parsed.toDateString() === now.toDateString()
+  return sameDay
+    ? parsed.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+    : parsed.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
 const DEFAULT_SAMPLE_JD = `About Stripe:
 Stripe builds economic infrastructure for the internet. Millions of companies from worldwide enterprises to seed-stage startups use Stripe’s software and APIs to accept payments, send payouts, and manage their business processes online.
 
@@ -163,6 +173,8 @@ export default function TailoredResumeWorkspace({
   // Persisted resume state for the currently viewed document
   const [resumeId, setResumeId] = useState<number | null>(null)
   const [savedMarkdown, setSavedMarkdown] = useState<string>('')
+  const [documentTitle, setDocumentTitle] = useState<string | null>(null)
+  const [documentUpdatedAt, setDocumentUpdatedAt] = useState<string | null>(null)
   const [loadedKey, setLoadedKey] = useState<string | null>(null)
   const [loadErrorState, setLoadErrorState] = useState<{
     key: string
@@ -208,12 +220,16 @@ export default function TailoredResumeWorkspace({
           setResumeId(detail.id)
           setMarkdownContent(detail.markdown)
           setSavedMarkdown(detail.markdown)
+          setDocumentTitle(detail.title)
+          setDocumentUpdatedAt(detail.updated_at)
         } else {
           const draft = await getResumeDraft(token)
           if (!isMounted) return
           setResumeId(null)
           setMarkdownContent(draft.markdown)
           setSavedMarkdown(draft.markdown)
+          setDocumentTitle(null)
+          setDocumentUpdatedAt(null)
         }
         setLoadErrorState(null)
       } catch (error) {
@@ -311,6 +327,8 @@ export default function TailoredResumeWorkspace({
     if (resumeId !== null) {
       const updated = await updateResume(token, resumeId, { markdown: markdownContent })
       setSavedMarkdown(updated.markdown)
+      setDocumentTitle(updated.title)
+      setDocumentUpdatedAt(updated.updated_at)
       setAtsState(null)
       setAtsRefreshKey((key) => key + 1)
       toast.success(`Saved "${updated.title}"`, 'Resume Saved')
@@ -326,6 +344,8 @@ export default function TailoredResumeWorkspace({
       )
       setResumeId(created.id)
       setSavedMarkdown(created.markdown)
+      setDocumentTitle(created.title)
+      setDocumentUpdatedAt(created.updated_at)
       setAtsRefreshKey((key) => key + 1)
       toast.success(`Saved "${created.title}"`, 'Resume Saved')
       return created.id
@@ -480,6 +500,8 @@ export default function TailoredResumeWorkspace({
           isSaving={isSaving}
           isDownloading={isDownloading}
           isDirty={isDirty}
+          documentTitle={documentTitle}
+          documentTimestamp={documentUpdatedAt ? `Saved ${formatSavedAt(documentUpdatedAt)}` : null}
           atsReport={atsReport}
           isLoadingDraft={isLoadingResume}
           loadError={loadError}

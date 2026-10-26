@@ -102,7 +102,9 @@ export default function JobDescriptionPanel({
               value={jobDescription}
               onChange={(e) => onJobDescriptionChange(e.target.value)}
             />
+          </div>
 
+          <div className="jd-sample-row">
             <button
               type="button"
               className="reload-sample-btn"
