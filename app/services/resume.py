@@ -1,6 +1,7 @@
-"""Service for orchestrating LLM-powered resume parsing and database upserts via LangGraph."""
+"""Services for orchestrating resume import, drafting, and AI generation."""
 
 from collections import defaultdict
+from dataclasses import dataclass
 from datetime import date
 import logging
 from typing import Any
@@ -9,12 +10,21 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.llm.graph import resume_extraction_graph
+from app.llm.resume_generation import resume_generation_graph
 from app.models.company import CompanyWorked
 from app.models.education import Education
 from app.models.experience_log import ExperienceLog
 from app.models.skill import Skill, SkillProficiency
 from app.models.user import User
-from app.schemas.resume import ResumeDraftResponse, ResumeImportResponse
+from app.schemas.resume import (
+    GenerationAccomplishment,
+    GenerationCandidateContext,
+    GenerationCompany,
+    GenerationEducation,
+    GenerationSkill,
+    ResumeDraftResponse,
+    ResumeImportResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +34,63 @@ _PROFICIENCY_ORDER: tuple[str, ...] = (
     SkillProficiency.INTERMEDIATE.value,
     SkillProficiency.BEGINNER.value,
 )
+
+
+@dataclass(frozen=True)
+class _CareerSnapshot:
+    """All user-owned records needed to build or generate a resume."""
+
+    user: User
+    companies: list[CompanyWorked]
+    logs_by_company: dict[int, list[ExperienceLog]]
+    skills: list[Skill]
+    education: list[Education]
+
+
+async def _load_career_snapshot(user_id: int, db: AsyncSession) -> _CareerSnapshot:
+    """Loads profile and career records in a consistent order for resume output."""
+    user = await db.get(User, user_id)
+    if user is None:
+        raise ValueError(f"User {user_id} not found")
+
+    companies_stmt = (
+        select(CompanyWorked)
+        .where(CompanyWorked.user_id == user_id)
+        .order_by(
+            CompanyWorked.actively_working.desc(),
+            CompanyWorked.start_date.desc(),
+        )
+    )
+    companies = list((await db.execute(companies_stmt)).scalars().all())
+
+    logs_stmt = (
+        select(ExperienceLog)
+        .where(ExperienceLog.user_id == user_id)
+        .order_by(ExperienceLog.created_at.asc(), ExperienceLog.id.asc())
+    )
+    logs = list((await db.execute(logs_stmt)).scalars().all())
+
+    logs_by_company: dict[int, list[ExperienceLog]] = defaultdict(list)
+    for log in logs:
+        logs_by_company[log.company_id].append(log)
+
+    skills_stmt = select(Skill).where(Skill.user_id == user_id)
+    skills = list((await db.execute(skills_stmt)).scalars().all())
+
+    education_stmt = (
+        select(Education)
+        .where(Education.user_id == user_id)
+        .order_by(Education.created_at.desc(), Education.id.desc())
+    )
+    education = list((await db.execute(education_stmt)).scalars().all())
+
+    return _CareerSnapshot(
+        user=user,
+        companies=companies,
+        logs_by_company=dict(logs_by_company),
+        skills=skills,
+        education=education,
+    )
 
 
 class ResumeImportService:
@@ -138,30 +205,10 @@ class ResumeDraftService:
     @staticmethod
     async def build_draft(user_id: int, db: AsyncSession) -> ResumeDraftResponse:
         """Builds a resume draft from the user's profile, companies, logs, and skills."""
-        user = await db.get(User, user_id)
-        if user is None:
-            raise ValueError(f"User {user_id} not found")
-
-        companies_stmt = (
-            select(CompanyWorked)
-            .where(CompanyWorked.user_id == user_id)
-            .order_by(
-                CompanyWorked.actively_working.desc(),
-                CompanyWorked.start_date.desc(),
-            )
-        )
-        companies = list((await db.execute(companies_stmt)).scalars().all())
-
-        logs_stmt = (
-            select(ExperienceLog)
-            .where(ExperienceLog.user_id == user_id)
-            .order_by(ExperienceLog.created_at.asc(), ExperienceLog.id.asc())
-        )
-        logs = list((await db.execute(logs_stmt)).scalars().all())
-
-        logs_by_company: dict[int, list[ExperienceLog]] = defaultdict(list)
-        for log in logs:
-            logs_by_company[log.company_id].append(log)
+        snapshot = await _load_career_snapshot(user_id, db)
+        user = snapshot.user
+        companies = snapshot.companies
+        logs_by_company = snapshot.logs_by_company
 
         experience_blocks: list[str] = []
         for company in companies:
@@ -182,8 +229,7 @@ class ResumeDraftService:
                 block_lines.append(f"- {description}")
             experience_blocks.append("\n".join(block_lines))
 
-        skills_stmt = select(Skill).where(Skill.user_id == user_id)
-        skills = list((await db.execute(skills_stmt)).scalars().all())
+        skills = snapshot.skills
 
         skills_by_proficiency: dict[str, list[str]] = defaultdict(list)
         for skill in skills:
@@ -207,12 +253,7 @@ class ResumeDraftService:
             joined = ", ".join(sorted(names, key=str.casefold))
             skill_lines.append(f"**{label}:** {joined}")
 
-        education_stmt = (
-            select(Education)
-            .where(Education.user_id == user_id)
-            .order_by(Education.created_at.desc(), Education.id.desc())
-        )
-        education_rows = list((await db.execute(education_stmt)).scalars().all())
+        education_rows = snapshot.education
 
         education_lines = [
             ResumeDraftService._education_line(education)
@@ -247,3 +288,178 @@ class ResumeDraftService:
             has_experience=bool(experience_blocks),
             has_skills=bool(skill_lines),
         )
+
+
+class ResumeGenerationService:
+    """Generates a tailored or generic resume through the LangGraph workflow."""
+
+    @staticmethod
+    def _completed_experience_years(
+        companies: list[CompanyWorked],
+        today: date | None = None,
+    ) -> int:
+        """Counts completed years across non-overlapping employment months."""
+        current_date = today or date.today()
+        current_month = current_date.year * 12 + current_date.month
+        intervals: list[tuple[int, int]] = []
+
+        for company in companies:
+            start_month = company.start_date.year * 12 + company.start_date.month
+            if company.actively_working or company.end_date is None:
+                end_month = current_month
+            else:
+                end_month = company.end_date.year * 12 + company.end_date.month
+            if end_month >= start_month:
+                intervals.append((start_month, end_month))
+
+        if not intervals:
+            return 0
+
+        intervals.sort()
+        total_months = 0
+        merged_start, merged_end = intervals[0]
+        for start_month, end_month in intervals[1:]:
+            if start_month <= merged_end + 1:
+                merged_end = max(merged_end, end_month)
+                continue
+            total_months += merged_end - merged_start + 1
+            merged_start, merged_end = start_month, end_month
+        total_months += merged_end - merged_start + 1
+        return total_months // 12
+
+    @staticmethod
+    def _header_markdown(user: User) -> tuple[str, bool]:
+        """Builds the candidate header and its profile-completeness flag."""
+        display_name = ResumeDraftService._display_name(user)
+        contact_line = ResumeDraftService._contact_line(user)
+        header_lines = [f"# {display_name}"]
+        if contact_line:
+            header_lines.append(contact_line)
+        return "\n".join(header_lines), bool(contact_line or display_name.strip())
+
+    @classmethod
+    def _education_block(cls, education: Education) -> str:
+        """Formats one education entry using the required heading and description structure."""
+        degree = " ".join(education.degree.split())
+        institution = " ".join(education.institution.split())
+        heading = f"### {degree} - {institution}"
+
+        if education.start_date is not None:
+            start = cls._format_education_date(education.start_date)
+            if education.end_date is None:
+                heading += f" ({start} \u2013 Present)"
+            else:
+                heading += (
+                    f" ({start} \u2013 {cls._format_education_date(education.end_date)})"
+                )
+
+        description = " ".join(education.description.split())
+        if not description:
+            return heading
+        return f"{heading}\n- {description}"
+
+    @staticmethod
+    def _format_education_date(value: date) -> str:
+        """Formats an education date as an abbreviated month and year."""
+        return value.strftime("%b %Y")
+
+    @classmethod
+    def _candidate_context(
+        cls,
+        snapshot: _CareerSnapshot,
+    ) -> GenerationCandidateContext:
+        """Builds the non-contact LLM context from stored career records."""
+        companies: list[GenerationCompany] = []
+        for company in snapshot.companies:
+            accomplishments = [
+                GenerationAccomplishment(
+                    id=log.id,
+                    description=" ".join(log.description.split()),
+                )
+                for log in snapshot.logs_by_company.get(company.id, [])
+                if log.description.strip()
+            ]
+            companies.append(
+                GenerationCompany(
+                    id=company.id,
+                    company_name=company.company_name.strip(),
+                    job_title=(company.job_title or "").strip() or None,
+                    date_range=ResumeDraftService._dates_line(company),
+                    accomplishments=accomplishments,
+                )
+            )
+
+        skills = [
+            GenerationSkill(
+                id=skill.id,
+                name=" ".join(skill.name.split()),
+                proficiency=skill.proficiency,
+            )
+            for skill in snapshot.skills
+            if skill.name.strip()
+        ]
+        education = [
+            GenerationEducation(
+                degree=" ".join(row.degree.split()),
+                institution=" ".join(row.institution.split()),
+                description=" ".join(row.description.split()),
+            )
+            for row in snapshot.education
+        ]
+
+        return GenerationCandidateContext(
+            years_experience=cls._completed_experience_years(snapshot.companies),
+            companies=companies,
+            skills=skills,
+            education=education,
+        )
+
+    @classmethod
+    async def generate(
+        cls,
+        user_id: int,
+        job_description: str | None,
+        db: AsyncSession,
+    ) -> ResumeDraftResponse:
+        """Generates resume Markdown without persisting or mutating career records."""
+        snapshot = await _load_career_snapshot(user_id, db)
+        candidate = cls._candidate_context(snapshot)
+        header_markdown, has_profile = cls._header_markdown(snapshot.user)
+        education_blocks = [
+            cls._education_block(education) for education in snapshot.education
+        ]
+        normalized_job_description = (job_description or "").strip() or None
+
+        initial_state = {
+            "candidate": candidate,
+            "header_markdown": header_markdown,
+            "education_blocks": education_blocks,
+            "has_profile": has_profile,
+            "job_description": normalized_job_description,
+            "job_context": None,
+            "professional_summary": None,
+            "selected_skill_ids": None,
+            "experience_bullets": None,
+            "draft_response": None,
+        }
+        config = {
+            "run_name": "ResumeGenerationWorkflow",
+            "tags": [
+                "resume-generation",
+                "tailored" if normalized_job_description else "generic",
+                f"user:{user_id}",
+            ],
+        }
+
+        logger.info(
+            "Executing LangGraph resume generation workflow for user_id=%d mode=%s",
+            user_id,
+            "tailored" if normalized_job_description else "generic",
+        )
+        final_state = await resume_generation_graph.ainvoke(initial_state, config=config)
+
+        response = final_state.get("draft_response")
+        if response is None:
+            raise ValueError("Resume generation completed without producing a draft")
+
+        return response

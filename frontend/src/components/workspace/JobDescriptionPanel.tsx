@@ -5,6 +5,7 @@ interface JobDescriptionPanelProps {
   onRoleTitleChange: (val: string) => void
   jobDescription: string
   onJobDescriptionChange: (val: string) => void
+  hasTargetJob: boolean
   onReloadSample: () => void
   onGenerate: () => void
   isGenerating: boolean
@@ -18,15 +19,16 @@ export default function JobDescriptionPanel({
   onRoleTitleChange,
   jobDescription,
   onJobDescriptionChange,
+  hasTargetJob,
   onReloadSample,
   onGenerate,
   isGenerating,
   userName,
 }: JobDescriptionPanelProps) {
   // Compute word count
-  const wordCount = jobDescription.trim()
-    ? jobDescription.trim().split(/\s+/).length
-    : 0
+  const trimmedDescription = jobDescription.trim()
+  const wordCount = trimmedDescription ? trimmedDescription.split(/\s+/).length : 0
+  const isTailored = hasTargetJob
 
   return (
     <aside className="jd-panel">
@@ -90,7 +92,9 @@ export default function JobDescriptionPanel({
             <div className="jd-stats-row">
               <span className="stat-highlight">{wordCount.toLocaleString()}</span> words
               <span>•</span>
-              <span className="stat-tertiary">18 skills parsed</span>
+              <span className="stat-tertiary">
+                {isTailored ? 'Tailored mode' : 'Generic mode'}
+              </span>
             </div>
           </div>
 
@@ -150,7 +154,7 @@ export default function JobDescriptionPanel({
           ) : (
             <>
               <span className="material-symbols-outlined cta-bolt-icon">bolt</span>
-              <span>Generate Tailored Resume</span>
+              <span>{isTailored ? 'Generate Tailored Resume' : 'Generate Generic Resume'}</span>
               <span className="shortcut-pill">⌘↵</span>
             </>
           )}
