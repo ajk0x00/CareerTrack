@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
+from app.llm.resume_generation import ResumeGenerationError
 from app.models.job import Job
 from app.models.resume import Resume
 from app.models.user import User
@@ -20,10 +21,11 @@ from app.schemas.resume import (
     ResumeCreate,
     ResumeDetail,
     ResumeDraftResponse,
+    ResumeGenerationRequest,
     ResumeSummary,
     ResumeUpdate,
 )
-from app.services.resume import ResumeDraftService
+from app.services.resume import ResumeDraftService, ResumeGenerationService
 from app.services.resume_export import ResumeExportService, build_keyword_coverage
 
 logger = logging.getLogger(__name__)
@@ -42,6 +44,15 @@ def _display_name(user: User) -> str:
     if name:
         return name
     return user.email.split("@", 1)[0]
+
+
+def _job_posting_text(job: Job) -> str:
+    """Combines a stored job description and requirements into one prompt-ready string."""
+    description = (job.description or "").strip()
+    requirements = (job.requirements or "").strip()
+    if description and requirements:
+        return f"{description}\n\nKey Requirements & Qualifications:\n{requirements}"
+    return description or requirements
 
 
 def _to_summary(resume: Resume, job: Job | None) -> ResumeSummary:
@@ -188,6 +199,66 @@ async def get_resume_draft(
 ) -> ResumeDraftResponse:
     """Builds a draft from stored profile, experience, and skills without persisting it."""
     return await ResumeDraftService.build_draft(current_user.id, db)
+
+
+@router.post(
+    "/generate",
+    response_model=ResumeDraftResponse,
+    summary="Generate a tailored or generic resume with AI",
+    responses={
+        404: {"description": "Target job not found"},
+        502: {"description": "Resume generation service failed"},
+    },
+)
+async def generate_resume(
+    data: ResumeGenerationRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ResumeDraftResponse:
+    """Generates ATS-oriented Markdown against a job description without persisting it."""
+    job: Job | None = None
+    if data.job_id is not None:
+        job_stmt = select(Job).where(
+            Job.id == data.job_id,
+            Job.user_id == current_user.id,
+            Job.expired_at.is_(None),
+        )
+        job = (await db.execute(job_stmt)).scalar_one_or_none()
+        if job is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Job not found",
+            )
+
+    job_description = data.job_description
+    if job_description is None and job is not None:
+        job_description = _job_posting_text(job) or None
+
+    try:
+        return await ResumeGenerationService.generate(
+            user_id=current_user.id,
+            job_description=job_description,
+            db=db,
+        )
+    except ResumeGenerationError as exc:
+        logger.warning(
+            "Resume generation rejected for user_id=%d: %s",
+            current_user.id,
+            exc,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Resume generation failed. Please try again.",
+        ) from exc
+    except Exception as exc:
+        logger.exception(
+            "Resume generation failed for user_id=%d",
+            current_user.id,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Resume generation service is unavailable. Please try again.",
+        ) from exc
 
 
 @router.get(

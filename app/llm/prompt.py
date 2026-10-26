@@ -76,10 +76,16 @@ def load_prompt(name: str, **variables: Any) -> tuple[list[BaseMessage], PromptL
     }
     prompt_config = PromptLLMConfig.model_validate(config_data)
 
-    # 2. Substitute variable placeholders safely (avoids format() KeyError on JSON braces)
-    for key, value in variables.items():
-        placeholder = f"{{{key}}}"
-        raw_md = raw_md.replace(placeholder, str(value))
+    # 2. Substitute variable placeholders in one pass so inserted values containing
+    # placeholder-like text are never interpreted as templates themselves.
+    if variables:
+        placeholder_pattern = re.compile(
+            r"\{(" + "|".join(re.escape(key) for key in variables) + r")\}"
+        )
+        raw_md = placeholder_pattern.sub(
+            lambda match: str(variables[match.group(1)]),
+            raw_md,
+        )
 
     # 3. Parse sections delimited by '# System', '# User', '# Assistant' headers
     section_pattern = re.compile(

@@ -3,7 +3,7 @@ import json
 from typing import Literal
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
-from pydantic import computed_field, field_validator
+from pydantic import Field, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -106,6 +106,8 @@ class Settings(BaseSettings):
     LLM_BASE_URL: str = "https://api.fireworks.ai/inference/v1"
     LLM_MODEL: str = "accounts/fireworks/models/glm-5p3"
     LLM_TEMPERATURE: float = 0.1
+    LLM_TIMEOUT_SECONDS: float = Field(default=90.0, gt=0, le=600)
+    LLM_MAX_RETRIES: int = Field(default=2, ge=0, le=5)
 
     # LangSmith Observability
     LANGCHAIN_TRACING_V2: bool = False

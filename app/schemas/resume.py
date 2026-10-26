@@ -192,6 +192,164 @@ class ResumeImportResponse(BaseModel):
     errors: list[str] = Field(default_factory=list)
 
 
+class ResumeGenerationRequest(BaseModel):
+    """Payload for generating an ATS-oriented resume from stored career data."""
+
+    job_id: int | None = Field(
+        default=None,
+        ge=1,
+        description="Optional tracked job whose description should be used when none is supplied.",
+    )
+    job_description: str | None = Field(
+        default=None,
+        max_length=50_000,
+        description="Optional job description to tailor against. Blank values run generic generation.",
+    )
+
+    @field_validator("job_description")
+    @classmethod
+    def normalize_job_description(cls, value: str | None) -> str | None:
+        """Trims the description and treats whitespace-only text as no target job."""
+        if value is None:
+            return None
+        stripped = value.strip()
+        return stripped or None
+
+
+class JobContextChunks(BaseModel):
+    """Structured job-description context routed to each generation branch."""
+
+    summary_context: str = Field(
+        ...,
+        description="Role scope, seniority, domain, and positioning cues relevant to the professional summary.",
+    )
+    skills_context: str = Field(
+        ...,
+        description="Required and preferred skills, technologies, and competencies ranked by importance.",
+    )
+    experience_context: str = Field(
+        ...,
+        description="Responsibilities, achievement themes, and domain language relevant to work experience.",
+    )
+
+
+def _clean_generated_text(value: str, *, max_length: int) -> str:
+    """Collapses generated prose to one plain-text line and enforces a safe length."""
+    cleaned = " ".join(value.split())
+    cleaned = cleaned.lstrip("#>* ")
+    cleaned = (
+        cleaned.replace("`", "")
+        .replace("![", "")
+        .replace(":::", " : ")
+        .replace("|", " / ")
+        .replace("<=", "at most ")
+        .replace(">=", "at least ")
+        .replace("<", "less than ")
+        .replace(">", "more than ")
+    )
+    cleaned = " ".join(cleaned.split()).lstrip("-* ").strip()
+    if not cleaned:
+        raise ValueError("Generated text cannot be empty")
+    if len(cleaned) > max_length:
+        raise ValueError(f"Generated text cannot exceed {max_length} characters")
+    return cleaned
+
+
+class GeneratedProfessionalSummary(BaseModel):
+    """Structured output for the professional summary branch."""
+
+    text: str = Field(
+        ...,
+        description="A plain-text professional summary with no Markdown formatting or bullet points.",
+    )
+
+    @field_validator("text")
+    @classmethod
+    def clean_text(cls, value: str) -> str:
+        """Normalizes the summary into one safe paragraph."""
+        return _clean_generated_text(value, max_length=1_500)
+
+
+class TailoredSkillSelection(BaseModel):
+    """Structured output containing source skill IDs in ATS-priority order."""
+
+    skill_ids: list[int] = Field(
+        default_factory=list,
+        description="Existing source skill IDs only, ordered from most to least relevant.",
+    )
+
+
+class TailoredExperienceBullet(BaseModel):
+    """A source accomplishment rewritten for the target job."""
+
+    log_id: int = Field(..., ge=1, description="Existing experience-log ID being rewritten")
+    text: str = Field(
+        ...,
+        description="A truthful, plain-text accomplishment with no Markdown or bullet prefix.",
+    )
+
+    @field_validator("text")
+    @classmethod
+    def clean_text(cls, value: str) -> str:
+        """Normalizes the bullet into one safe line."""
+        return _clean_generated_text(value, max_length=700)
+
+
+class TailoredExperienceSelection(BaseModel):
+    """Structured output containing ordered, rewritten accomplishments."""
+
+    bullets: list[TailoredExperienceBullet] = Field(
+        default_factory=list,
+        description="Selected source accomplishment IDs and their ATS-oriented rewrites in display order.",
+    )
+
+
+class GenerationAccomplishment(BaseModel):
+    """A stored accomplishment supplied to the generation graph."""
+
+    id: int
+    description: str
+
+
+class GenerationCompany(BaseModel):
+    """A stored employment tenure supplied to the generation graph."""
+
+    id: int
+    company_name: str
+    job_title: str | None
+    date_range: str
+    accomplishments: list[GenerationAccomplishment] = Field(default_factory=list)
+
+
+class GenerationSkill(BaseModel):
+    """A stored skill supplied to the generation graph."""
+
+    id: int
+    name: str
+    proficiency: str
+
+
+class GenerationEducation(BaseModel):
+    """A stored education record supplied to summary generation."""
+
+    degree: str
+    institution: str
+    description: str
+
+
+class GenerationCandidateContext(BaseModel):
+    """Non-contact career data used by the LLM generation branches."""
+
+    years_experience: int = Field(
+        ...,
+        ge=0,
+        description="Completed years of professional experience calculated from non-overlapping employment dates.",
+    )
+    companies: list[GenerationCompany] = Field(default_factory=list)
+    skills: list[GenerationSkill] = Field(default_factory=list)
+    education: list[GenerationEducation] = Field(default_factory=list)
+
+
 class ResumeCreate(BaseModel):
     """Payload for persisting a generated resume."""
 
