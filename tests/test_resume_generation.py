@@ -1,17 +1,23 @@
 """Focused tests for the AI resume-generation workflow."""
 
 from datetime import date
+from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from typing import cast
+from unittest.mock import AsyncMock, patch
 
+from fastapi import HTTPException
 from pydantic import ValidationError
 
+from app.api.v1.endpoints.resumes import generate_resume as generate_resume_endpoint
 from app.llm import resume_generation
 from app.llm.prompt import load_prompt
 from app.models.company import CompanyWorked
 from app.models.education import Education
+from app.models.user import User
 from app.services.resume import ResumeGenerationService
 from app.llm.resume_generation import (
+    ResumeGenerationConfigurationError,
     ResumeGenerationError,
     compose_resume_node,
     prepare_job_context_node,
@@ -308,6 +314,54 @@ class ResumeGenerationRequestTests(unittest.TestCase):
         self.assertEqual(
             summary.text,
             "Built less than 100ms APIs / Python and Go",
+        )
+
+
+class ResumeGenerationConfigurationTests(unittest.IsolatedAsyncioTestCase):
+    """A missing LLM credential is a server misconfiguration, not a retryable failure."""
+
+    async def test_missing_api_key_raises_configuration_error(self) -> None:
+        settings = SimpleNamespace(LLM_API_KEY="", LLM_BASE_URL="https://api.example/v1")
+        with patch.object(resume_generation, "get_settings", return_value=settings):
+            with self.assertRaises(ResumeGenerationConfigurationError):
+                await resume_generation._invoke_structured(
+                    "extract_resume",
+                    GeneratedProfessionalSummary,
+                    {},
+                    resume="R",
+                )
+
+    async def test_configuration_error_maps_to_503(self) -> None:
+        with patch.object(
+            ResumeGenerationService,
+            "generate",
+            AsyncMock(side_effect=ResumeGenerationConfigurationError("LLM_API_KEY is not configured")),
+        ):
+            with self.assertRaises(HTTPException) as raised:
+                await generate_resume_endpoint(
+                    ResumeGenerationRequest(),
+                    cast(User, SimpleNamespace(id=1)),
+                    AsyncMock(),
+                )
+        self.assertEqual(raised.exception.status_code, 503)
+        self.assertIn("not configured", raised.exception.detail)
+
+    async def test_workflow_failure_still_maps_to_502(self) -> None:
+        with patch.object(
+            ResumeGenerationService,
+            "generate",
+            AsyncMock(side_effect=ResumeGenerationError("The model selected a skill outside the candidate's data")),
+        ):
+            with self.assertRaises(HTTPException) as raised:
+                await generate_resume_endpoint(
+                    ResumeGenerationRequest(),
+                    cast(User, SimpleNamespace(id=1)),
+                    AsyncMock(),
+                )
+        self.assertEqual(raised.exception.status_code, 502)
+        self.assertEqual(
+            raised.exception.detail,
+            "Resume generation failed. Please try again.",
         )
 
 

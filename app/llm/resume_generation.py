@@ -30,6 +30,14 @@ class ResumeGenerationError(RuntimeError):
     """Raised when the generation workflow cannot produce a trustworthy resume."""
 
 
+class ResumeGenerationConfigurationError(ResumeGenerationError):
+    """Raised when the workflow lacks the credentials or endpoint it needs to run.
+
+    Distinct from the base error because no retry from the client can resolve it:
+    the server is misconfigured, so the API maps this to 503 rather than 502.
+    """
+
+
 class ResumeGenerationState(TypedDict):
     """Shared state for the resume-generation LangGraph."""
 
@@ -55,12 +63,12 @@ async def _invoke_structured(
     settings = get_settings()
     api_key = settings.LLM_API_KEY.strip()
     if not api_key:
-        raise ResumeGenerationError("LLM_API_KEY is not configured")
+        raise ResumeGenerationConfigurationError("LLM_API_KEY is not configured")
 
     messages, prompt_config = load_prompt(prompt_name, **variables)
     base_url = prompt_config.base_url.rstrip("/")
     if not base_url:
-        raise ResumeGenerationError("An LLM base URL is not configured")
+        raise ResumeGenerationConfigurationError("An LLM base URL is not configured")
 
     llm = ChatOpenAI(
         model=prompt_config.model,

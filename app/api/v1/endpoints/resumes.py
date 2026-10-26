@@ -12,7 +12,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
-from app.llm.resume_generation import ResumeGenerationError
+from app.llm.resume_generation import (
+    ResumeGenerationConfigurationError,
+    ResumeGenerationError,
+)
 from app.models.job import Job
 from app.models.resume import Resume
 from app.models.user import User
@@ -208,6 +211,7 @@ async def get_resume_draft(
     responses={
         404: {"description": "Target job not found"},
         502: {"description": "Resume generation service failed"},
+        503: {"description": "Resume generation is not configured on this server"},
     },
 )
 async def generate_resume(
@@ -240,6 +244,19 @@ async def generate_resume(
             job_description=job_description,
             db=db,
         )
+    except ResumeGenerationConfigurationError as exc:
+        logger.error(
+            "Resume generation is not configured (user_id=%d): %s",
+            current_user.id,
+            exc,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Resume generation is not configured on this server yet. "
+                "Ask an administrator to set the LLM credentials."
+            ),
+        ) from exc
     except ResumeGenerationError as exc:
         logger.warning(
             "Resume generation rejected for user_id=%d: %s",
